@@ -1,7 +1,7 @@
 # Informe de Sprint 0 — Infraestructura, base de datos, almacenamiento y autenticación
 
-Fecha: 2026-10-14 · Estado: **criterios de aceptación cumplidos** (salvo la ejecución en
-GitHub Actions, que se verá al primer push; ver §3).
+Fecha: 2026-10-14 · Estado: **todos los criterios de aceptación cumplidos**, también en
+GitHub Actions ([CI run #1](https://github.com/akapaez/DEKEN-STUDIO/actions/runs/38560375624)).
 
 Todas las pruebas se han ejecutado contra servicios reales (PostgreSQL 16, Valkey 8,
 SeaweedFS, FFmpeg/ffprobe), sin simulaciones. Los únicos datos sintéticos son los del
@@ -25,7 +25,7 @@ autotest de render y los ficheros de prueba, etiquetados como tales.
 | S0-12 Web (E2E) | ✅ | `infra/scripts/e2e.sh` → 8/8 en Playwright: redirección sin sesión, error genérico, dashboard con estado real y navegación honesta (2 enlaces + 8 secciones deshabilitadas), tema claro/oscuro persistente, alta de usuario, registro de worker + worker real + autotest verificado + descarga + ffprobe, permisos de editor, auditoría y logout. |
 | S0-13 Secretos | ✅ | `make check-secrets`: 5 secretos buscados en 3.678 ficheros del build; ninguno aparece. |
 | S0-14 Backup | ✅ | `infra/scripts/backup.sh` + `restore.sh` en BD y bucket nuevos: recuentos idénticos y SHA-256 idéntico de todos los objetos. |
-| S0-15 Calidad | ✅ local | `ruff`, `ruff format`, `mypy --strict` (55 ficheros), `tsc --strict`, `eslint`, `pytest` (125), `vitest` (22), Playwright (8). |
+| S0-15 Calidad | ✅ | `ruff`, `ruff format`, `mypy --strict` (55 ficheros), `tsc --strict`, `eslint`, `pytest` (125), `vitest` (22), Playwright (8). En CI (GitHub Actions, Ubuntu 24.04): calidad, integración + render real + E2E + copia de seguridad, e imágenes Docker en verde. |
 
 ## 2. Resultados de la verificación
 
@@ -52,8 +52,6 @@ Incidencias detectadas y corregidas por las propias pruebas:
 
 ## 3. Pendiente y fuera de alcance
 
-- **CI en GitHub Actions**: el workflow `.github/workflows/ci.yml` reproduce lo anterior;
-  se valida en el primer push.
 - Las secciones Director IA, Biblioteca, Productor, Editor, Calendario y Marca DEKEN
   aparecen deshabilitadas con su sprint.
 - `workers/analysis` es solo un marcador documentado (Sprint 1).
