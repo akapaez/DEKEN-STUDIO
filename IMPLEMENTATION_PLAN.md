@@ -4,8 +4,15 @@ Cada sprint tiene criterios de aceptación **verificables** (un comando, un test
 comprobación manual concreta). Un sprint no empieza hasta que el anterior cumple los
 suyos. Las funciones de V2 no se empiezan hasta cerrar V1.
 
-Estado actual: **Sprint 0 implementado y verificado** — ver
-[docs/sprints/SPRINT_0_REPORT.md](docs/sprints/SPRINT_0_REPORT.md).
+Estado actual: **Sprints 0 y 1 implementados y verificados**, con Remotion integrado
+como motor principal de composición en modo **evaluación** (licencia de empresa
+pendiente) — ver [docs/sprints/SPRINT_0_REPORT.md](docs/sprints/SPRINT_0_REPORT.md) y
+[docs/sprints/SPRINT_1_REPORT.md](docs/sprints/SPRINT_1_REPORT.md).
+
+> **Decisión de Sprint 1** ([ADR 0005](docs/adr/0005-remotion-composition-engine.md)):
+> Remotion es el motor principal de composición, animación y render final; FFmpeg queda
+> para análisis, proxys, normalización y verificación. Hasta regularizar la licencia de
+> Remotion solo se renderiza en modo evaluación; esto **no bloquea** el resto de sprints.
 
 ## Definición de "hecho" (todos los sprints)
 
@@ -23,12 +30,12 @@ DEKEN STUDIO AI es funcional cuando un usuario puede, con vídeos reales:
 
 | Paso | Sprint | Verificación automática |
 |---|---|---|
-| Importar vídeos | 1 | `tests/e2e/journey.spec.ts` paso 1 + integración `test_media_import.py` |
+| Importar vídeos | 1 ✅ | `apps/web/e2e/sprint1.spec.ts` + integración `test_media_library.py` |
 | Crear un proyecto | 3 | journey paso 2 |
 | Generar o escribir un guion | 2 | journey paso 3 (modo manual siempre; IA si está configurada) |
 | Obtener una propuesta de montaje | 3 | journey paso 4 |
 | Modificar planos y textos | 4 | journey paso 5 |
-| Renderizar | 3/4 | journey paso 6 + `test_render_real.py` |
+| Renderizar | 3/4 (motor ✅ en 1) | journey paso 6 + `test_remotion.py` (render Remotion real verificado) |
 | Descargar y reproducir el MP4 | 3 | journey paso 7: ffprobe del fichero descargado (1080×1920, 30 fps, H.264/AAC, duración ±1 frame) |
 | Guardar y recuperar el proyecto | 3/4 | journey paso 8: recarga, re-render idéntico en estructura |
 
@@ -82,33 +89,50 @@ DEKEN como prueba de aceptación manual documentada.
 
 ---
 
-## Sprint 1 — Biblioteca audiovisual e identidad corporativa
+## Sprint 1 — Biblioteca audiovisual, identidad corporativa e integración de Remotion ✅
 
-**Alcance**
-- Importación MP4/MOV por subida multiparte con URL firmada; límites de tamaño y
-  tipo; SHA-256; detección de duplicados.
-- Trabajo `media.probe`: validación de contenido real con ffprobe (rechaza ficheros
-  que no son vídeo aunque tengan extensión válida).
-- Trabajo `media.derive`: miniaturas (póster + tira), proxy 540p H.264 para
-  previsualización, forma de onda.
-- Biblioteca: listado, filtros, etiquetas manuales, ficha del activo con
-  reproducción del proxy, metadatos técnicos, consentimiento de personas grabadas,
-  origen (siempre material real de DEKEN).
-- Marca DEKEN: subida de logos oficiales y tipografías, paleta y reglas
-  (desde `packages/brand`), validación de proporciones de logo.
+**Alcance (implementado)**
+- Importación MP4/MOV por **subida multiparte** directa al almacenamiento (URLs firmadas
+  por parte, cancelación, reintentos), validación en la API (`ListParts` + ffprobe),
+  originales inmutables, SHA-256 y **duplicados**.
+- Trabajo `media.ingest` (FFmpeg, cola `analysis`): decodificación de muestra (detecta
+  corruptos), póster, tira, proxy 540p sin deformar (rotación y SAR), forma de onda.
+- Biblioteca: galería con póster y tira para hojear, búsqueda, filtros (estado,
+  orientación, audio, consentimiento), etiquetas, ficha con reproductor del proxy y forma
+  de onda sincronizada, metadatos técnicos, catalogación, **derechos de imagen**
+  (personas, consentimiento con referencia, restricciones, titular; auditados) y descarga
+  del original; archivado sin borrar.
+- Marca DEKEN: paleta y reglas, logos analizados de verdad (proporción y familia, tinta
+  medida frente al nombre del fichero, transparencia, fondo recomendado y de uso, vista
+  previa sobre fondo claro y oscuro), tipografías (fontTools) e imágenes corporativas.
+- **Remotion** (ADR 0005): `packages/video-compositions` (línea de tiempo
+  `deken.timeline/1` en zod → JSON Schema para la API, reglas semánticas, geometría sin
+  deformación, composiciones de evaluación y de línea de tiempo, catálogo de 10
+  plantillas), renderer Node en `workers/render/remotion`, handlers
+  `system.remotion_eval` y `render.timeline`, puerta de licencia triple, previsualización
+  con Remotion Player en *Configuración → Sistema*, imagen del worker con el motor.
+- **No incluido** (por decisión de alcance): editor completo (Sprint 4) y montajes
+  automáticos (Sprint 3). La arquitectura de ambos queda preparada y validada.
 
 **Criterios de aceptación**
 
-| ID | Criterio | Verificación |
-|---|---|---|
-| S1-01 | Importar MP4 y MOV hasta el límite configurado (por defecto 20 GB) | integración con ficheros sintéticos de 3 tamaños; multiparte > 100 MB |
-| S1-02 | Rechazo de ficheros falsos/corruptos | test: `.mp4` que es texto → rechazado con motivo |
-| S1-03 | Originales intactos | test: SHA-256 del original igual antes y después de todo el procesado |
-| S1-04 | Miniaturas y proxy reales | test: existen, dimensiones correctas, proxy reproducible (ffprobe + decodificación completa) |
-| S1-05 | Biblioteca usable | Playwright: subir, ver progreso, ver miniatura y reproducir proxy, etiquetar, buscar |
-| S1-06 | Recursos de marca | Playwright: subir logo, ver proporción calculada, marcar variante por fondo |
+| ID | Criterio | Verificación | Estado |
+|---|---|---|---|
+| S1-01 | Importar MP4 y MOV (por defecto hasta 20 GiB), multiparte real | `test_media_library.py`: MP4 vertical con audio, MOV horizontal sin audio, MOV con rotación de móvil, subida > 100 MB en ≥ 7 partes; parte que falta → 409; > 20 GiB → 413; `.avi` → 422 | ✅ |
+| S1-02 | Rechazo de ficheros falsos/corruptos | texto con extensión `.mp4` → `rejected` y objeto borrado; MP4 con datos corruptos → `rejected` en la ingesta | ✅ |
+| S1-03 | Originales intactos | SHA-256 del original igual al subido tras todo el procesado; descarga desde la web idéntica byte a byte (E2E) | ✅ |
+| S1-04 | Miniaturas y proxy reales | póster 405×720, tira 1010×180, proxy 540×960 H.264 + AAC decodificado entero, forma de onda; MOV rotado → proxy vertical | ✅ |
+| S1-05 | Biblioteca usable | `sprint1.spec.ts`: subir desde el navegador con progreso, ficha con proxy y forma de onda, catalogar, buscar y filtrar por etiqueta, derechos de imagen, descarga; usuario de consulta sin acciones de escritura | ✅ |
+| S1-06 | Recursos de marca | `test_brand.py` + `sprint1.spec.ts`: proporción y familia calculadas, tinta medida, aviso cuando el nombre no coincide, fondo de uso por variante, tipografías, rechazos | ✅ |
+| S1-R1 | Prueba técnica de Remotion | `test_remotion.py`: 5 s, 1080×1920, 30 fps, 150 fotogramas exactos, H.264 `yuv420p` + AAC, decodificación completa, guardado en `evaluation/`; también dentro de la imagen del worker (`deken-remotion-check` en CI) | ✅ |
+| S1-R2 | Línea de tiempo validada y renderizada | esquema (422), medios no autorizados (422), semántica inválida → `invalid_timeline` sin reintentos, reencuadre 16:9 → 9:16 sin deformar renderizado y verificado | ✅ |
+| S1-R3 | Puerta de licencia | producción → 409 en la API; rechazo en worker y renderer (tests unitarios) | ✅ |
+| S1-R4 | Cancelación y limpieza | cancelación a mitad de render detiene Remotion; directorio del trabajo vacío tras éxito, fallo y cancelación | ✅ |
+| S1-R5 | Previsualización = render | Remotion Player en la web con la misma composición; render lanzado desde la interfaz y verificado con ffprobe (E2E) | ✅ |
 
-**Dependencias**: material real de DEKEN (`Deken-Recursos/Videos-bruto`, logos, `.ttf`).
+**Dependencias**: material real de DEKEN (`Deken-Recursos/Videos-bruto`, logos,
+`.ttf`) para la aceptación manual; licencia de empresa de Remotion para renders
+comerciales (pendiente, no bloquea).
 
 ---
 
@@ -148,7 +172,9 @@ DEKEN como prueba de aceptación manual documentada.
 - Propuesta de montaje a partir de guion/storyboard + segmentos disponibles (sin
   inventar escenas: si falta un plano, la propuesta lo marca como "pendiente de
   grabar").
-- Render `render.timeline` con FFmpeg y verificación de salida.
+- Propuesta de montaje como documento `deken.timeline/1` (ya validado por la API) y
+  render `render.timeline` con **Remotion** (motor ya integrado) y verificación de
+  salida; renders comerciales solo con licencia de empresa de Remotion.
 
 **Criterios de aceptación**
 
@@ -164,10 +190,11 @@ DEKEN como prueba de aceptación manual documentada.
 
 ## Sprint 4 — Editor, reencuadre, subtítulos y ajustes
 
-**Alcance**: editor de timeline (mover, recortar, dividir, reordenar, pistas de
-texto y audio), reencuadre manual con vista previa real (fotograma del proxy),
-subtítulos desde transcripción editables en zonas seguras, ajustes de volumen y
-fundidos, historial de versiones y deshacer.
+**Alcance**: editor de timeline sobre `deken.timeline/1` (mover, recortar, dividir,
+reordenar, pistas de texto, subtítulos, marca y audio), previsualización con **Remotion
+Player** (misma composición que el render), reencuadre manual sin deformar (las reglas
+de `validate.ts` se aplican mientras se edita), subtítulos desde transcripción editables
+en zonas seguras, volumen y fundidos, historial de versiones y deshacer.
 
 **Criterios de aceptación**
 

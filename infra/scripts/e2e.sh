@@ -23,9 +23,12 @@ export DEKEN_S3_BUCKET="$BUCKET"
 export DEKEN_ALLOWED_ORIGINS="http://localhost:${WEB_PORT}"
 export DEKEN_LOG_JSON=true
 
+# Cada proceso en segundo plano en su propio grupo, para terminar también a sus hijos
+# (pnpm → next, uv → uvicorn) y no dejar puertos ocupados.
+set -m
 pids=()
 cleanup() {
-  for pid in "${pids[@]:-}"; do kill "$pid" 2>/dev/null || true; done
+  for pid in "${pids[@]:-}"; do kill -- "-$pid" 2>/dev/null || kill "$pid" 2>/dev/null || true; done
   wait 2>/dev/null || true
   psql "$PG_ADMIN_URL" -qc "DROP DATABASE IF EXISTS \"${DB_NAME}\" WITH (FORCE)" >/dev/null || true
   uv run python - <<PY || true

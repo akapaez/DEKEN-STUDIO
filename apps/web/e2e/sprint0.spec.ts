@@ -62,9 +62,11 @@ test("dashboard con estado real y navegación honesta", async ({ page }) => {
   await expect(page.getByText("Operativo").first()).toBeVisible();
   await expect(page.getByText("No configurado")).toBeVisible(); // IA sin clave: se dice claramente
   const nav = page.getByRole("navigation", { name: "Secciones" });
-  await expect(nav.getByRole("link")).toHaveCount(2); // Dashboard y Configuración
-  await expect(nav.getByText("Biblioteca")).toBeVisible();
-  await expect(nav.locator('[aria-disabled="true"]')).toHaveCount(8);
+  // Sprint 1: Dashboard, Biblioteca, Marca DEKEN y Configuración. El resto, deshabilitado.
+  await expect(nav.getByRole("link")).toHaveCount(4);
+  await expect(nav.getByRole("link", { name: "Biblioteca" })).toBeVisible();
+  await expect(nav.getByText("Director IA")).toBeVisible();
+  await expect(nav.locator('[aria-disabled="true"]')).toHaveCount(6);
 });
 
 test("tema claro y oscuro", async ({ page }) => {

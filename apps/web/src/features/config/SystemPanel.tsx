@@ -11,6 +11,7 @@ import { keys, useInvalidate, useSystemStatus } from "@/lib/queries";
 
 import styles from "./config.module.css";
 import { JobDetailView } from "./JobDetailView";
+import { RemotionPanel } from "./RemotionPanel";
 
 const SELFTEST = "system.render_selftest";
 
@@ -100,6 +101,7 @@ export function SystemPanel({ canManage }: { canManage: boolean }) {
         </Card>
       </div>
       {latestJob ? <JobDetailView jobId={latestJob.id} canManage={canManage} /> : null}
+      <RemotionPanel canManage={canManage} />
     </div>
   );
 }

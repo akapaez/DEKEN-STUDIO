@@ -18,7 +18,7 @@ function apiBase(): string {
   return (process.env.DEKEN_API_INTERNAL_URL ?? "http://localhost:8000").replace(/\/$/, "");
 }
 
-/** Orígenes desde los que se sirven vídeos e imágenes mediante URLs firmadas. */
+/** Orígenes del almacenamiento (URLs firmadas): vídeos, imágenes y subidas directas. */
 function mediaOrigins(): string {
   const raw = process.env.DEKEN_MEDIA_ORIGINS ?? "http://localhost:8333";
   return raw
@@ -39,7 +39,8 @@ export function buildCsp(nonce: string, isDev: boolean): string {
     `img-src 'self' blob: data: ${media}`,
     `media-src 'self' blob: ${media}`,
     "font-src 'self'",
-    "connect-src 'self'",
+    // Subidas directas al almacenamiento con URLs firmadas (multiparte y marca).
+    `connect-src 'self' ${media}`,
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",

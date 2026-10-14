@@ -60,7 +60,8 @@ describe("cliente de API", () => {
     expect(error.code).toBe("last_admin");
     expect(error.requestId).toBe("r1");
     expect(errorMessage(error)).toBe("Debe quedar un administrador");
-    expect(errorMessage(new Error("x"))).toBe("Error inesperado");
+    expect(errorMessage(new Error("Error de red al subir una parte"))).toBe("Error de red al subir una parte");
+    expect(errorMessage("x")).toBe("Error inesperado");
   });
 });
 

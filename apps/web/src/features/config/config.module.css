@@ -134,3 +134,26 @@
     grid-template-columns: 1fr;
   }
 }
+
+.remotionGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 200px) minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.playerBox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+/* El Player escala la composición 1080×1920 a este ancho; nada se sale de la caja. */
+.player {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-m);
+  border: 1px solid var(--border);
+  background: #0d0e0f;
+}

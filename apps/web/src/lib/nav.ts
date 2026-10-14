@@ -20,7 +20,7 @@ export interface NavItem {
   label: string;
   icon: NavIcon;
   /** Ruta si la sección está disponible; null si aún no lo está. */
-  href: "/" | "/configuracion" | null;
+  href: "/" | "/configuracion" | "/biblioteca" | "/marca" | null;
   /** Cuándo llega la sección (solo si no está disponible). */
   availability?: string;
   description: string;
@@ -29,11 +29,11 @@ export interface NavItem {
 export const NAV_ITEMS: readonly NavItem[] = [
   { id: "dashboard", label: "Dashboard", icon: "dashboard", href: "/", description: "Estado del sistema y actividad" },
   { id: "director", label: "Director IA", icon: "director", href: null, availability: "Sprint 2", description: "Estrategias, campañas y guiones con fuentes verificadas" },
-  { id: "library", label: "Biblioteca", icon: "library", href: null, availability: "Sprint 1", description: "Grabaciones reales de DEKEN, metadatos y previsualizaciones" },
+  { id: "library", label: "Biblioteca", icon: "library", href: "/biblioteca", description: "Grabaciones reales de DEKEN, metadatos y previsualizaciones" },
   { id: "producer", label: "Productor audiovisual", icon: "producer", href: null, availability: "Sprint 3", description: "Segmentos, propuesta de montaje y render" },
   { id: "editor", label: "Editor", icon: "editor", href: null, availability: "Sprint 4", description: "Línea de tiempo, reencuadre y subtítulos" },
   { id: "calendar", label: "Calendario", icon: "calendar", href: null, availability: "Sprint 2", description: "Calendario editorial y campañas" },
-  { id: "brand", label: "Marca DEKEN", icon: "brand", href: null, availability: "Sprint 1", description: "Logos oficiales, tipografías y reglas de marca" },
+  { id: "brand", label: "Marca DEKEN", icon: "brand", href: "/marca", description: "Logos oficiales, tipografías y reglas de marca" },
   { id: "publications", label: "Publicaciones", icon: "publications", href: null, availability: "V2", description: "Publicación con APIs oficiales y aprobación humana" },
   { id: "analytics", label: "Analítica y leads", icon: "analytics", href: null, availability: "V2", description: "Estadísticas de contenidos y captación comercial" },
   { id: "settings", label: "Configuración", icon: "settings", href: "/configuracion", description: "Sistema, usuarios, workers, trabajos y auditoría" },

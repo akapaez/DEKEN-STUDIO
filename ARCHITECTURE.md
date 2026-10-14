@@ -87,7 +87,7 @@ La brief exige separar estrictamente seis capas. Así se materializan:
 | Interfaz | `apps/web` | Sin lógica de negocio: renderiza, valida formularios para UX y llama a la API tipada. Nunca decide permisos (solo oculta lo que la API denegaría). |
 | Lógica de negocio | `services/api/src/deken_api/services/` | Casos de uso puros sobre la sesión de BD y puertos (storage, cola, IA). No conoce HTTP. |
 | Servicios de IA | `services/api/src/deken_api/ai/` (Sprint 2) | Puerto `AIProvider` con implementaciones intercambiables; recibe contexto de la base de conocimiento y devuelve contenido con citas. |
-| Procesamiento audiovisual | `workers/*` | Procesos separados que solo hablan con la API por HTTPS. FFmpeg se invoca con listas de argumentos, nunca con shell. |
+| Procesamiento audiovisual | `workers/*` + `packages/video-compositions` | Procesos separados que solo hablan con la API por HTTPS. Composición y render final con **Remotion**; análisis, proxys y verificación con **FFmpeg** (listas de argumentos, nunca shell). Ver §10 y ADR 0005. |
 | Persistencia | `services/api/src/deken_api/db/` + `infra/migrations/` | SQLAlchemy 2 (async) + Alembic. Solo la API toca PostgreSQL. |
 | Integraciones externas | `services/api/src/deken_api/integrations/` | Storage S3, Redis, ffprobe, (V2) redes sociales. Cada una tras una interfaz con comprobación de salud. |
 
@@ -100,8 +100,12 @@ permisos y delegan en `services/`.
 apps/web/                 Next.js (App Router) + React + TypeScript estricto
 services/api/             FastAPI: API v1, auth, RBAC, auditoría, trabajos, storage
 workers/runtime/          SDK común de workers (cliente HTTP, bucle, sandbox de procesos)
-workers/render/           Handlers de render (FFmpeg; Remotion opcional, ver §10)
-workers/analysis/         Handlers de análisis: ffprobe, miniaturas, segmentos, transcripción
+workers/render/           Handlers de render: autotest FFmpeg y Remotion (evaluación, timeline)
+workers/render/remotion/  Renderer Node de Remotion (CLI con eventos JSON, servidor local de entradas)
+workers/analysis/         Handlers de análisis: ingesta (hash, póster, tira, proxy, forma de onda);
+                          segmentos y transcripción en Sprint 3
+packages/video-compositions/  Composiciones Remotion, esquema deken.timeline/1 (zod → JSON Schema),
+                          reglas semánticas, geometría sin deformación y catálogo de plantillas
 packages/shared/python/   Contratos Python compartidos (contrato de trabajos v1, límites de medios)
 packages/shared/ts/       Tipos TS generados desde OpenAPI + constantes compartidas
 packages/shared/openapi/  openapi.json generado (versionado en git, comprobado en CI)
@@ -126,8 +130,8 @@ en la raíz orquesta tareas comunes.
 | Sesiones | Cookie opaca + tabla `sessions` (no JWT) | Revocación inmediata (logout, desactivación de usuario), sin refresh tokens en el navegador. |
 | Cola | PostgreSQL como fuente de verdad + Redis (Valkey 8, BSD) como señal | Estado durable y auditable; `SKIP LOCKED` para reparto; Redis despierta a los workers en long-poll y limita intentos de login. Si Redis cae, los workers siguen funcionando por sondeo. |
 | Almacenamiento | S3 (boto3). Dev: **SeaweedFS** (Apache-2.0) | Compatible S3, licencia permisiva. MinIO descartado por cambio de distribución/licencia (ver `docs/ENVIRONMENT_REVIEW.md`). Producción: cualquier S3 (AWS, Cloudflare R2, Wasabi, SeaweedFS propio). |
-| Vídeo | FFmpeg/ffprobe (CLI) | Estándar de facto, H.264/AAC, filtros de reencuadre, subtítulos (libass) y detección (escenas, silencio, negro, desenfoque). |
-| Motion graphics | Remotion (opcional, **requiere licencia de empresa**) | Ver §10. V1 no depende de Remotion. |
+| Composición y render final | **Remotion 4.0.531** (React) + Chrome Headless Shell en el worker | Motor principal: títulos, transiciones, subtítulos, marca, plantillas, multicapa y previsualización (Remotion Player) con el mismo código. **Solo evaluación** hasta regularizar la licencia de empresa (ADR 0005). |
+| Vídeo auxiliar | FFmpeg/ffprobe 7.x (CLI) | Análisis, metadatos, miniaturas, proxys, formas de onda, normalización y verificación de salidas (worker y servidor). |
 | Transcripción | faster-whisper (MIT) en el worker local | Privacidad (audio no sale del equipo), sin coste por minuto. Sprint 1/4. |
 | Logs | structlog JSON + `X-Request-ID` | Correlación API ↔ worker ↔ trabajo. |
 | Tipografía | Montserrat (OFL-1.1), IBM Plex Mono (OFL-1.1) vía `@fontsource`, servidas localmente | Sin peticiones a Google en tiempo de ejecución (RGPD). |
@@ -149,10 +153,11 @@ Un bucket por entorno (`deken-studio` por defecto) con prefijos:
 
 | Prefijo | Contenido | Política |
 |---|---|---|
-| `originals/` | Ficheros importados tal cual | Inmutables. Clave `originals/<uuid>/<sha256>.<ext>`. Nunca se emite una URL de subida para una clave existente. |
-| `derived/` | Miniaturas, proxies, waveforms, transcripciones | Regenerables desde originales. |
-| `renders/` | Exportaciones MP4 finales | Solo tras verificación. |
-| `brand/` | Logos y recursos de marca oficiales | Subidos por admin. |
+| `originals/` | Ficheros importados tal cual | Inmutables. Clave `originals/<id del activo>/<uuid>.<ext>` generada por el servidor; el SHA-256 se calcula en la ingesta y se guarda como metadato (duplicados). Nunca se emite una URL de subida para una clave existente. |
+| `derived/` | Póster, tira de fotogramas, proxy 540p, forma de onda (y transcripciones en Sprint 3) | Regenerables desde originales; verificados en servidor (ffprobe / JSON). |
+| `renders/` | Exportaciones MP4 finales de producción | Solo tras verificación y **solo con licencia de empresa de Remotion**. |
+| `evaluation/` | Renders de evaluación de Remotion (marca de agua) | Separados del contenido comercial; nombre de descarga `deken-evaluacion-remotion-*`. |
+| `brand/` | Logos, tipografías e imágenes oficiales y sus vistas previas | Subidos por quien tenga `brand:manage`; analizados en la API. |
 | `system/` | Pruebas técnicas del sistema (autotest de render) | Datos sintéticos **etiquetados**; nunca se mezclan con contenido. |
 
 Las claves **siempre** las genera el servidor (UUID + hash). Los nombres de fichero
@@ -188,8 +193,13 @@ stateDiagram-v2
 - **Verificación de salida**: al completar, la API comprueba que cada objeto existe,
   que tamaño y SHA-256 coinciden con lo declarado, y para vídeo ejecuta **ffprobe en el
   servidor** contra el objeto almacenado y lo compara con la especificación pedida
-  (códec, resolución, fps, duración, pista de audio). Si falla, el trabajo es `failed`
-  con `output_verification_failed`.
+  (códec, resolución, fps, duración, pista de audio); las imágenes se comprueban con
+  ffprobe (formato y tamaño máximo) y los JSON se parsean. Las salidas pueden ser
+  obligatorias u opcionales (p. ej. la forma de onda de un vídeo sin audio). Si falla,
+  el trabajo es `failed` con `output_verification_failed`.
+- **Efectos de dominio**: al terminar un trabajo, `job_hooks` actualiza en la misma
+  transacción el estado del activo correspondiente (p. ej. la ingesta deja el vídeo
+  `ready`, `rejected` o `duplicate`).
 - **Trazabilidad**: cada transición, reintento, error y salida queda en `job_events`.
 - **Versionado**: cabecera `X-Deken-Job-Contract: 1`; la API rechaza workers con una
   versión incompatible.
@@ -202,7 +212,7 @@ Un worker en la nube usa **exactamente** el mismo protocolo; solo cambia dónde 
 |---|---|
 | Desarrollo | `infra/docker-compose.yml` con PostgreSQL 16, Valkey 8 (compatible Redis) y SeaweedFS; API, web y worker en el host (`make dev`) o en contenedores (`--profile app`). |
 | Servidor V1 | Mismo Compose detrás de un proxy TLS (Caddy/Traefik) que enruta `/api` → API y `/` → web. Almacenamiento S3 gestionado o SeaweedFS con volumen respaldado. |
-| Worker local | Windows 11 + WSL2 (Ubuntu) con FFmpeg, o Docker Desktop. Solo necesita `DEKEN_API_URL` y `DEKEN_WORKER_TOKEN`. Guía: [docs/deployment/WORKER_WSL2.md](docs/deployment/WORKER_WSL2.md). |
+| Worker local | Windows 11 + WSL2 (Ubuntu) con FFmpeg y Node 22 (Remotion: `make remotion`), o Docker Desktop con la imagen del worker (lo incluye todo). Solo necesita `DEKEN_API_URL` y `DEKEN_WORKER_TOKEN`. Guía: [docs/deployment/WORKER_WSL2.md](docs/deployment/WORKER_WSL2.md). |
 | Worker nube (futuro) | Misma imagen `infra/docker/worker.Dockerfile` en cualquier proveedor con GPU/CPU. |
 
 ## 9. Seguridad (resumen)
@@ -220,7 +230,9 @@ Detalle y matriz de permisos en [docs/SECURITY.md](docs/SECURITY.md).
 - **Secretos**: solo por variables de entorno o ficheros (`/run/secrets`); nunca en el
   repositorio ni en el bundle web (test automático lo comprueba).
 - **Ficheros**: URLs firmadas de corta duración; claves generadas por el servidor;
-  validación de extensión, tipo, tamaño y **contenido real** (ffprobe) en Sprint 1.
+  validación de extensión, tamaño y **contenido real**: ffprobe en la API al cerrar la
+  subida y decodificación de muestra en la ingesta (vídeo); Pillow/fontTools con límite
+  de píxeles (marca). Los rechazados se borran del almacenamiento.
 - **Procesos**: FFmpeg/ffprobe con lista de argumentos, `-protocol_whitelist`,
   timeouts, directorio temporal aislado por trabajo y limpieza garantizada.
 - **Auditoría**: tabla `audit_events` inmutable desde la aplicación (solo inserción).
@@ -229,36 +241,71 @@ Detalle y matriz de permisos en [docs/SECURITY.md](docs/SECURITY.md).
 - **Datos personales**: mínimos (usuarios internos; leads en V2). Grabaciones con
   personas: campo de consentimiento por activo desde Sprint 1.
 
-## 10. Producción audiovisual (diseño objetivo, Sprints 1–4)
+## 10. Producción audiovisual
+
+Decisión: **Remotion es el motor principal de composición y render; FFmpeg es el motor
+auxiliar** ([ADR 0005](docs/adr/0005-remotion-composition-engine.md)). Mientras Grupo
+Deken no regularice la licencia de empresa de Remotion, solo se hacen renders de
+**evaluación** (marca de agua, prefijo `evaluation/`).
 
 ```mermaid
 flowchart LR
-  I[Importación MP4/MOV] --> O[(originals/)]
-  O --> P[media.probe<br/>ffprobe + validación]
-  P --> T[media.thumbnails<br/>miniaturas + proxy 540p]
-  T --> S[media.segments<br/>escenas, silencios, negro,<br/>desenfoque, transcripción]
-  S --> C[Clasificación<br/>manual + IA opcional]
-  C --> M[Propuesta de montaje<br/>timeline v1]
-  M --> E[Editor<br/>edición manual]
-  E --> R[render.timeline<br/>FFmpeg]
-  R --> V{Verificación<br/>ffprobe servidor}
-  V -->|OK| X[(renders/ MP4)]
-  V -->|KO| F[failed + motivo]
+  subgraph Sprint1["Sprint 1 (implementado)"]
+    I[Navegador<br/>subida multiparte] -->|PUT firmados| O[(originals/)]
+    O --> P[API: ListParts + ffprobe<br/>rechaza no-vídeos]
+    P --> G[media.ingest — FFmpeg<br/>SHA-256, decodificación de muestra,<br/>póster, tira, proxy 540p, forma de onda]
+    G --> D[(derived/)]
+    G --> L[Biblioteca<br/>catálogo, derechos, duplicados]
+  end
+  subgraph Sprint34["Sprints 3–4"]
+    L --> S[media.segments<br/>escenas, silencios, transcripción]
+    S --> M[Propuesta de montaje<br/>deken.timeline/1]
+    M --> E[Editor + Remotion Player]
+  end
+  E --> R[render.timeline<br/>Remotion]
+  M --> R
+  R --> V{Verificación<br/>ffprobe worker + servidor}
+  V -->|evaluación| X[(evaluation/)]
+  V -.->|con licencia de empresa| Y[(renders/)]
 ```
 
-- La **línea de tiempo** es un documento JSON versionado (`timeline v1`, esquema en
-  `docs/CONTRACTS.md §4`) con pistas, clips, posiciones, duraciones, recortes
-  (*in/out*), reencuadre (rectángulo de recorte normalizado), textos, subtítulos y
-  audio. Se guarda con historial de versiones y se puede volver a renderizar.
-- **Render V1 con FFmpeg** (`filter_complex` generado desde la timeline): sin
-  deformación (`scale` con `force_original_aspect_ratio` + `crop`/`pad`), subtítulos
-  con libass dentro de zonas seguras 1080×1920, salida H.264 (High, yuv420p) + AAC
-  48 kHz, 30 fps CFR, `+faststart`.
-- **Remotion** queda como motor opcional para piezas gráficas. Su licencia exige
-  *Company License* para empresas de más de 3 empleados; no se activará sin esa
-  licencia (ver `docs/ENVIRONMENT_REVIEW.md §4`).
-- **Música**: solo pistas de la biblioteca de marca con licencia registrada
-  (campo `license_ref` obligatorio). Sin licencia, el render se hace sin música.
+**Ingesta (FFmpeg, `workers/analysis`)**: descarga verificada del original (tamaño +
+SHA-256), decodificación de los primeros segundos (`-xerror`: un MP4 con cabeceras
+válidas pero datos corruptos se rechaza), póster (lado mayor ≤ 720 px), tira de 10
+fotogramas a 180 px de alto, proxy H.264/AAC con el lado corto a 540 px (sin ampliar,
+cadencia ajustada al estándar más próximo, `setsar=1`), forma de onda (picos absolutos
+en 1000 tramos) y comprobación final de que el original no ha cambiado. FFmpeg aplica la
+rotación del móvil; el tamaño de visualización tiene en cuenta rotación y SAR.
+
+**Composición (Remotion)**:
+
+- `packages/video-compositions` define la **línea de tiempo `deken.timeline/1`** (zod):
+  salida (formato 9:16, 16:9 o 1:1 con tamaño fijo, 24/25/30/60 fps, duración en
+  fotogramas), pistas de vídeo (recorte de origen en segundos, velocidad, reencuadre
+  normalizado, `cover`/`contain`, volumen, fundidos, transición), texto, subtítulos,
+  marca y audio. Las referencias a medios son IDs; las URLs se resuelven en cada render
+  y nunca se guardan. El JSON Schema generado (`check-schema` en CI) lo valida la API.
+- Reglas semánticas (renderer y, en Sprint 4, editor): clips dentro de la duración, sin
+  solapes salvo transición, fuentes resueltas, recortes dentro del original,
+  **reencuadre con la proporción de la salida (±1 %) para no deformar**, texto ≥ 30 px y
+  visible ≥ 2,5 s, logo nunca en los 3 primeros segundos, música con referencia de
+  licencia, zonas seguras por formato.
+- Composiciones: `DekenEvaluation` (prueba técnica 5 s, 1080×1920, 30 fps) y
+  `DekenTimeline` (interpreta la línea de tiempo). Catálogo de 10 plantillas como datos
+  (reel vertical, horizontal, cuadrado, educativo, procesos industriales, producto,
+  comercial B2B, comparación técnica, animación de marca, intro y cierre).
+- Marca: verde `#76B82A` plano, gris `#383E42`, Montserrat e IBM Plex Mono cargadas y
+  comprobadas en el render, llegadas `cubic-bezier(0.16,1,0.3,1)`, empuje de cámara
+  ≤ 6 %.
+- Render (`workers/render/remotion`): H.264 `yuv420p` BT.709, CRF 18, AAC 48 kHz con
+  pista de audio garantizada; progreso por eventos, cancelación (SIGTERM →
+  `cancelSignal`), timeout; verificación local con ffprobe y decodificación completa;
+  la API vuelve a verificar en servidor.
+- **Previsualización**: la web usa Remotion Player con las mismas composiciones
+  (*Configuración → Sistema*; en Sprint 4, el editor).
+
+**Música**: solo pistas con licencia registrada (`license_ref` obligatorio en la pista
+de música). Sin licencia, el render no se acepta.
 
 ## 11. Director creativo IA (diseño objetivo, Sprint 2)
 
@@ -280,7 +327,9 @@ flowchart LR
 - Logs JSON con `request_id`, `user_id`, `job_id`, `worker_id`.
 - `GET /api/v1/health/live` y `/health/ready` (BD, Redis, storage).
 - `GET /api/v1/system/status`: versiones, revisión de migración, workers en línea,
-  proveedor IA configurado, ffprobe disponible.
+  proveedor IA configurado, ffprobe disponible y modo de licencia de Remotion.
+- `GET /api/v1/renders/engine` y las capacidades de cada worker (`engines`): versión de
+  Remotion y Node por worker. `deken-remotion-check` prueba el motor en una máquina.
 - Eventos de trabajo consultables en la interfaz (Configuración → Trabajos).
 
 ## 13. Decisiones registradas
@@ -290,14 +339,16 @@ flowchart LR
 | [0001](docs/adr/0001-postgres-job-queue.md) | Cola de trabajos en PostgreSQL + Redis como señal; protocolo HTTP de workers. |
 | [0002](docs/adr/0002-server-side-sessions.md) | Sesiones de servidor con cookie opaca en vez de JWT. |
 | [0003](docs/adr/0003-object-storage.md) | S3 genérico; SeaweedFS en desarrollo; MinIO descartado. |
-| [0004](docs/adr/0004-ffmpeg-first-rendering.md) | FFmpeg como motor de render V1; Remotion opcional sujeto a licencia. |
+| [0004](docs/adr/0004-ffmpeg-first-rendering.md) | ~~FFmpeg como motor de render V1~~ — sustituida por la 0005. |
+| [0005](docs/adr/0005-remotion-composition-engine.md) | Remotion motor principal de composición/render; FFmpeg auxiliar; solo evaluación hasta regularizar la licencia. |
 
 ## 14. Riesgos principales
 
 | Riesgo | Mitigación |
 |---|---|
-| Ficheros MOV muy grandes (>5 GB) | Subida multiparte S3 (Sprint 1) y proxies 540p para edición. |
+| Ficheros MOV muy grandes (>5 GB) | Subida multiparte S3 (partes de 16 MiB, hasta 20 GiB por defecto) y proxys 540p para revisión y edición. |
 | Worker local apagado | Estado visible en dashboard; trabajos esperan en cola; lease + reintentos. |
 | Alucinaciones de IA en datos técnicos | Solo hechos aprobados con cita obligatoria; revisión humana. |
-| Licencias (Remotion, música) | Puertas de licencia explícitas; Remotion desactivado por defecto. |
+| Licencias (Remotion, música) | Remotion en modo evaluación por defecto con triple puerta (API, worker, renderer), marca de agua y prefijo `evaluation/`; música solo con `license_ref`. |
+| Navegador del worker (Chrome Headless Shell) no disponible | `deken-remotion-check` y estado del motor en *Configuración → Sistema*; los handlers de Remotion solo se registran si el motor está disponible. |
 | Pérdida de datos | Backups diarios de BD + réplica del bucket; prueba de restauración en Sprint 5. |

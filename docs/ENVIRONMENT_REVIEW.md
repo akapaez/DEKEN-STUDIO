@@ -78,7 +78,7 @@ Las versiones exactas quedan en `uv.lock` y `pnpm-lock.yaml`.
 | FFmpeg (builds con libx264) | GPL-2.0+ | ✅ Uso interno como proceso externo (no se enlaza ni se distribuye). Si algún día se distribuye el worker a terceros, revisar obligaciones GPL. |
 | Montserrat, IBM Plex Mono | SIL OFL-1.1 | ✅ Se sirven localmente |
 | faster-whisper / modelos Whisper | MIT | ✅ (Sprint 3) |
-| **Remotion** | Licencia propia: gratis para particulares y empresas **≤ 3 empleados**; *Company License* de pago para el resto | ⚠️ Grupo Deken necesita **Company License** para usar Remotion en esta plataforma. V1 no depende de Remotion; el motor queda desactivado hasta que DEKEN confirme la licencia. Las animaciones que ya se hacen con Remotion fuera de la plataforma están igualmente sujetas a esta licencia. |
+| **Remotion** | Licencia propia: gratis para particulares y empresas **≤ 3 empleados**; *Company License* de pago para el resto | ⚠️ Grupo Deken necesita **Company License** para usar Remotion en esta plataforma. **Actualización Sprint 1** ([ADR 0005](adr/0005-remotion-composition-engine.md)): Remotion pasa a ser el motor principal de composición, integrado en **modo evaluación** (permitido por la licencia mientras no haya uso comercial): renders con marca de agua en `evaluation/` y renders comerciales deshabilitados hasta que DEKEN regularice la licencia. Las animaciones que ya se hacen con Remotion fuera de la plataforma están igualmente sujetas a esta licencia. |
 | Música | Según biblioteca | ⚠️ Solo pistas con licencia registrada (`license_ref`). |
 | APIs de IA | Términos del proveedor | ⚠️ Revisar tratamiento de datos (no enviar datos personales; RGPD). |
 

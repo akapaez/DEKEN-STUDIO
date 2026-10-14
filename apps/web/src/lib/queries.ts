@@ -1,7 +1,7 @@
 "use client";
 
 import type { JobStatus, Schemas } from "@deken/shared";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 
 import { api, unwrap } from "./api";
@@ -13,6 +13,22 @@ export type JobDetail = Schemas["JobDetailOut"];
 export type User = Schemas["UserOut"];
 export type WorkerInfo = Schemas["WorkerOut"];
 export type AuditEvent = Schemas["AuditEventOut"];
+export type MediaAsset = Schemas["MediaAssetOut"];
+export type MediaAssetDetail = Schemas["MediaAssetDetailOut"];
+export type BrandAsset = Schemas["BrandAssetOut"];
+export type RenderEngine = Schemas["RenderEngineOut"];
+
+export interface MediaFilters {
+  q?: string;
+  tag?: string[];
+  status?: string;
+  orientation?: "vertical" | "horizontal" | "square";
+  has_audio?: boolean;
+  consent?: "not_required" | "pending" | "granted" | "denied";
+}
+
+/** Estados de un activo que aún pueden cambiar sin intervención (sondeo). */
+export const MEDIA_IN_PROGRESS: ReadonlySet<string> = new Set(["uploading", "processing"]);
 
 const TERMINAL: ReadonlySet<JobStatus> = new Set(["completed", "failed", "cancelled"]);
 export const isTerminal = (status: JobStatus): boolean => TERMINAL.has(status);
@@ -26,6 +42,13 @@ export const keys = {
   roles: ["roles"] as const,
   workers: ["workers"] as const,
   audit: (outcome?: string) => ["audit", outcome ?? "all"] as const,
+  media: ["media"] as const,
+  mediaList: (filters: MediaFilters) => ["media", "list", filters] as const,
+  mediaAsset: (id: string) => ["media", "asset", id] as const,
+  mediaTags: ["media", "tags"] as const,
+  waveform: (id: string) => ["media", "waveform", id] as const,
+  brand: ["brand"] as const,
+  renderEngine: ["render-engine"] as const,
 };
 
 export function useMe() {
@@ -103,5 +126,55 @@ export function useLogout() {
       router.replace("/login");
       router.refresh();
     },
+  });
+}
+
+const MEDIA_PAGE = 48;
+
+export function useMediaAssets(filters: MediaFilters) {
+  return useInfiniteQuery({
+    queryKey: keys.mediaList(filters),
+    initialPageParam: 0,
+    queryFn: ({ pageParam }) =>
+      unwrap(api.GET("/api/v1/media/assets", { params: { query: { ...filters, limit: MEDIA_PAGE, offset: pageParam } } })),
+    getNextPageParam: (last, pages) => {
+      const loaded = pages.reduce((n, p) => n + p.items.length, 0);
+      return loaded < last.total ? loaded : undefined;
+    },
+    refetchInterval: (query) =>
+      query.state.data?.pages.some((p) => p.items.some((a) => MEDIA_IN_PROGRESS.has(a.status))) ? 3_000 : 60_000,
+  });
+}
+
+export function useMediaAsset(id: string) {
+  return useQuery({
+    queryKey: keys.mediaAsset(id),
+    queryFn: () => unwrap(api.GET("/api/v1/media/assets/{asset_id}", { params: { path: { asset_id: id } } })),
+    refetchInterval: (query) => (MEDIA_IN_PROGRESS.has(query.state.data?.status ?? "") ? 2_000 : false),
+  });
+}
+
+export function useMediaTags() {
+  return useQuery({ queryKey: keys.mediaTags, queryFn: () => unwrap(api.GET("/api/v1/media/tags")) });
+}
+
+export function useWaveform(id: string, enabled: boolean) {
+  return useQuery({
+    queryKey: keys.waveform(id),
+    queryFn: () => unwrap(api.GET("/api/v1/media/assets/{asset_id}/waveform", { params: { path: { asset_id: id } } })),
+    enabled,
+    staleTime: Infinity,
+  });
+}
+
+export function useBrandAssets() {
+  return useQuery({ queryKey: keys.brand, queryFn: () => unwrap(api.GET("/api/v1/brand/assets")) });
+}
+
+export function useRenderEngine() {
+  return useQuery({
+    queryKey: keys.renderEngine,
+    queryFn: () => unwrap(api.GET("/api/v1/renders/engine")),
+    refetchInterval: 15_000,
   });
 }

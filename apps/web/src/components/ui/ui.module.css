@@ -337,3 +337,10 @@
   margin: 0;
   overflow-wrap: anywhere;
 }
+
+.textarea {
+  min-height: 88px;
+  padding: var(--space-2) var(--space-3);
+  resize: vertical;
+  line-height: 1.45;
+}

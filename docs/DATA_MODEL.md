@@ -77,7 +77,8 @@ Historial por trabajo: `created`, `claimed`, `progress` (solo cambios de mensaje
 
 ### `stored_objects`
 Objeto en S3: `bucket` + `key` (únicos, **generados por el servidor**), `kind`
-(`original|derived|render|brand|system_test`), `status`
+(`original|derived|render|brand|system_test|evaluation` — `evaluation` desde la
+migración `0002`, renders de evaluación de Remotion), `status`
 (`pending|available|rejected|deleted`), `content_type`, `size_bytes`, `sha256`,
 `original_filename` (saneado, solo metadato), `media_info` (resumen ffprobe),
 `verified_at`, `created_by_user_id`, `created_by_job_id`. Solo los `available` se pueden
@@ -87,13 +88,44 @@ descargar.
 Una fila por salida declarada y por intento (`job_id`, `attempt`, `name` únicos),
 con `object_id`, `kind`, `verified` y `verification` (problemas detectados).
 
-## 2. Evolución prevista (se añadirá con migraciones nuevas)
+## 2. Implementado en Sprint 1 (migración `0002`)
+
+```mermaid
+erDiagram
+    media_assets }o--|| stored_objects : "original (inmutable)"
+    media_assets }o--o| stored_objects : "póster, tira, proxy, forma de onda"
+    media_assets }o--o| jobs : "ingesta"
+    media_assets }o--o| media_assets : "duplicado de"
+    brand_assets }o--|| stored_objects : "fichero"
+    brand_assets }o--o| stored_objects : "vista previa"
+```
+
+### `media_assets` (biblioteca audiovisual)
+| Grupo | Columnas | Notas |
+|---|---|---|
+| Estado | `status` | `uploading` → `processing` → `ready` · `rejected` (no es vídeo / corrupto) · `failed` (error de proceso, reintentable) · `duplicate` · `cancelled` (subida abortada); `status_reason` |
+| Subida | `original_object_id`, `upload_id`, `part_size_bytes`, `part_count`, `declared_size_bytes`, `original_filename` | multiparte S3; el `upload_id` solo vive mientras dura la subida |
+| Integridad | `sha256` (índice), `duplicate_of_id` | el hash lo calcula la ingesta; mismo hash que un activo `ready` → `duplicate` |
+| Técnicos (ffprobe) | `container`, `duration_s`, `width`, `height` (**de visualización**: rotación y SAR aplicadas), `rotation`, `fps`, `video_codec`, `audio_codec`, `has_audio`, `bit_rate`, `probe` (JSONB) | validados en la API al cerrar la subida |
+| Derivados | `poster_object_id`, `strip_object_id`, `strip_frames`, `proxy_object_id`, `waveform_object_id`, `ingest_job_id` | solo salidas verificadas en servidor |
+| Catálogo | `title`, `description`, `tags` (array, índice GIN, normalizadas en minúsculas), `recorded_at`, `location` | |
+| Derechos de imagen | `people_present` (`yes`/`no`/`unknown`), `consent_status` (`not_required`/`pending`/`granted`/`denied`), `consent_reference` (obligatoria si `granted`), `usage_restrictions`, `rights_owner` (por defecto "Grupo Deken"), `rights_updated_at`, `rights_updated_by_user_id` | uso en producción solo si `people_present = no` o consentimiento `granted`/`not_required` |
+| Registro | `created_by_user_id`, `created_at`, `updated_at`, `archived_at` | archivar oculta el activo; el original se conserva |
+
+### `brand_assets` (marca DEKEN)
+| Grupo | Columnas | Notas |
+|---|---|---|
+| Identidad | `kind` (`logo`/`font`/`image`), `name`, `family` (`DEKEN`, `GD`, `GRUPO-DEKEN`, `GRUPO-DEKEN-HORIZONTAL`), `status` (`uploading`/`ready`/`rejected`/`cancelled`) | la familia se deduce de la proporción (±12 %) si no se indica |
+| Fichero | `object_id`, `preview_object_id`, `original_filename`, `content_type`, `declared_size_bytes`, `sha256` | logos solo PNG/WebP; tipografías TTF/OTF |
+| Análisis del logo | `width`, `height`, `aspect_ratio`, `has_alpha`, `declared_color` (del nombre), `measured_color_name`, `measured_color_hex`, `color_mismatch`, `recommended_background`, `usage_background` (`dark`/`light`/`any`), `analysis` (JSONB: proporción de tintas, avisos) | la tinta se mide en los píxeles opacos; el nombre del fichero no se da por bueno |
+| Tipografía | `font_family`, `font_style`, `font_weight` | cursiva detectada → aviso (prohibida por la guía) |
+| Otros | `license_ref`, `notes`, `created_by_user_id`, `archived_at` | |
+
+## 3. Evolución prevista (se añadirá con migraciones nuevas)
 
 | Sprint | Tablas | Campos clave |
 |---|---|---|
-| 1 | `media_assets` | `original_object_id`, `title`, `recorded_at`, `location`, `consent_status` (personas grabadas), `source` (siempre material propio), `tags`, `duration_s`, `width`, `height`, `fps`, `has_audio`, `status` (`uploading`→`probing`→`ready`/`rejected`) |
-| 1 | `media_derivatives` | `asset_id`, `kind` (`poster`, `strip`, `proxy_540p`, `waveform`), `object_id` |
-| 1 | `brand_assets` | `kind` (`logo`, `font`, `music`), `variant`, `measured_color`, `aspect_ratio`, `license_ref` (obligatorio para música), `object_id` |
+| 3/4 | `brand_assets` (`kind = music`) | `license_ref` obligatorio para música |
 | 2 | `knowledge_sources` | `title`, `kind` (`document`, `url`, `note`), `object_id`/`url`, `owner_user_id`, `verified_at`, `verified_by` |
 | 2 | `knowledge_facts` | `source_id`, `statement`, `status` (`proposed`/`approved`/`retired`), `approved_by` |
 | 2 | `campaigns` | `name`, `objective`, `audience`, `starts_on`, `ends_on`, `status` |
@@ -102,6 +134,6 @@ con `object_id`, `kind`, `verified` y `verification` (problemas detectados).
 | 2 | `approvals` | `content_id`, `decision`, `reviewer_id`, `comment` |
 | 3 | `media_segments` | `asset_id`, `start_s`, `end_s`, `kind` (`scene`, `speech`, `silence`, `black`, `blur`), `score`, `labels`, `transcript` |
 | 3 | `projects` | `title`, `content_id`, `aspect`, `target_duration_s` |
-| 3 | `timeline_versions` | `project_id`, `version`, `document` (JSON timeline v1), `created_by`; inmutables |
+| 3 | `timeline_versions` | `project_id`, `version`, `document` (JSON `deken.timeline/1`, validado con el JSON Schema generado), `created_by`; inmutables |
 | 3 | `renders` | `timeline_version_id`, `job_id`, `output_object_id` |
 | V2 | `social_accounts`, `publications`, `metrics`, `leads` | OAuth oficial; datos personales de leads con base legal y retención |

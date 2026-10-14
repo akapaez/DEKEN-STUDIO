@@ -1,6 +1,8 @@
 # ADR 0004 — FFmpeg como motor de render de V1; Remotion opcional
 
-- Estado: aceptada (Sprint 0)
+- Estado: **sustituida** por [ADR 0005](0005-remotion-composition-engine.md) (Sprint 1).
+  FFmpeg sigue siendo el motor de análisis, proxys y verificación; el render final y
+  la composición pasan a Remotion, con puerta de licencia.
 
 ## Contexto
 La brief propone FFmpeg y Remotion. La licencia de Remotion exige *Company License* para

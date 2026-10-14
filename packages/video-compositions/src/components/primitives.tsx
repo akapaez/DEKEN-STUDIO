@@ -2,7 +2,7 @@ import { brand, neutralsDark, onGreen } from "@deken/brand";
 import type { CSSProperties, ReactNode } from "react";
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 
-import { BRAND_FONT, MONO_FONT } from "../fonts";
+import { BRAND_FONT_STACK, MONO_FONT_STACK } from "../fonts";
 import { arrival, arriveFrames, cameraPush } from "../motion";
 
 /** Fondo plano de marca con un empuje de cámara suave (≤ 6 %). */
@@ -48,7 +48,7 @@ export function ArrivingText({
   return (
     <div
       style={{
-        fontFamily: `${BRAND_FONT}, sans-serif`,
+        fontFamily: BRAND_FONT_STACK,
         fontWeight: weight,
         fontSize: size,
         lineHeight: 1,
@@ -89,7 +89,7 @@ export function Label({ children, start = 0, size = 32 }: { children: ReactNode;
   return (
     <div
       style={{
-        fontFamily: `${MONO_FONT}, monospace`,
+        fontFamily: MONO_FONT_STACK,
         fontWeight: 600,
         fontSize: Math.max(30, size),
         letterSpacing: "0.16em",

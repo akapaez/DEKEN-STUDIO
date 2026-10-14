@@ -21,6 +21,30 @@ DEKEN_WORKER_TOKEN=dkw_... make dev-worker
 En *Configuración → Sistema* lanza el **autotest de render** para comprobar la cadena
 completa (worker → FFmpeg → almacenamiento → verificación → vista previa → descarga).
 
+### Motor Remotion (Sprint 1)
+
+```bash
+make remotion   # esquema al día, renderer, bundle de composiciones, Chrome Headless Shell
+                # (descarga desde remotion.media) y render de evaluación de prueba
+```
+
+Si la red no permite la descarga del navegador, apunta `DEKEN_REMOTION_BROWSER` (en
+`infra/.env`) a un Chrome Headless Shell existente y comprueba con
+`uv run deken-remotion-check`. El worker solo registra los handlers de Remotion si el
+motor está disponible; el estado aparece en *Configuración → Sistema → Remotion*.
+Remotion funciona en modo **evaluación** (ver ADR 0005): renders con marca de agua en
+`evaluation/`, nunca comerciales.
+
+Para ver o ajustar las composiciones: `pnpm --filter @deken/video-compositions studio`
+(Remotion Studio, solo desarrollo).
+
+### Biblioteca (Sprint 1)
+
+La subida va directa del navegador al almacenamiento: el origen de la web debe estar en
+`S3_ALLOWED_ORIGINS` (CORS de SeaweedFS; por defecto `http://localhost:3000` y el de E2E,
+`http://localhost:3100`) y el almacenamiento en `DEKEN_MEDIA_ORIGINS` de la web (CSP).
+El worker debe atender la cola `analysis` para la ingesta.
+
 ## Todo en contenedores
 
 ```bash

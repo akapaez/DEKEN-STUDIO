@@ -92,5 +92,6 @@ export function errorMessage(error: unknown): string {
     }
     return error.message;
   }
+  if (error instanceof Error && error.message) return error.message;
   return "Error inesperado";
 }

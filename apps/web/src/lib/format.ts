@@ -50,8 +50,27 @@ export function shortId(id: string, length = 8): string {
 
 const JOB_TYPE_LABELS: Record<string, string> = {
   "system.render_selftest": "Autotest de render",
+  "system.remotion_eval": "Evaluación de Remotion",
+  "media.ingest": "Ingesta de vídeo",
+  "render.timeline": "Render de línea de tiempo",
 };
 
 export function jobTypeLabel(type: string): string {
   return JOB_TYPE_LABELS[type] ?? type;
+}
+
+/** 75.4 → "1:15"; 3725 → "1:02:05". */
+export function formatClock(seconds: number | null | undefined): string {
+  if (seconds === null || seconds === undefined || !Number.isFinite(seconds)) return "—";
+  const total = Math.max(0, Math.round(seconds));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  const ss = String(s).padStart(2, "0");
+  return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${ss}` : `${m}:${ss}`;
+}
+
+export function formatFps(fps: number | null | undefined): string {
+  if (!fps) return "—";
+  return `${fps.toLocaleString(LOCALE, { maximumFractionDigits: 3 })} fps`;
 }

@@ -4,11 +4,17 @@ Plataforma privada de Grupo Deken (fabricante de ventanas y puertas de PVC Schü
 profesionales, Santiponce, Sevilla) para producción audiovisual con material real,
 dirección creativa asistida por IA y planificación de contenidos.
 
-**Estado:** Sprint 0 completado y verificado
-([informe](docs/sprints/SPRINT_0_REPORT.md)). Funciona: autenticación y roles,
-auditoría, almacenamiento con URLs firmadas, cola de trabajos híbrida local/nube,
-autotest de render real con verificación en servidor, Dashboard y Configuración.
-Las demás secciones aparecen deshabilitadas con el sprint en que llegan.
+**Estado:** Sprints 0 y 1 completados y verificados
+([Sprint 0](docs/sprints/SPRINT_0_REPORT.md) · [Sprint 1](docs/sprints/SPRINT_1_REPORT.md)).
+Funciona: autenticación y roles, auditoría, almacenamiento con URLs firmadas, cola de
+trabajos híbrida local/nube, **Biblioteca** (subida multiparte de MP4/MOV, ingesta con
+póster, tira, proxy y forma de onda, catálogo, derechos de imagen), **Marca DEKEN**
+(logos y tipografías analizados) y **Remotion** como motor de composición en modo
+evaluación. Las demás secciones aparecen deshabilitadas con el sprint en que llegan.
+
+> **Licencia de Remotion:** solo desarrollo y evaluación hasta que Grupo Deken verifique
+> y regularice la licencia de empresa; los renders comerciales están deshabilitados
+> ([ADR 0005](docs/adr/0005-remotion-composition-engine.md)).
 
 ## Documentación
 
@@ -40,7 +46,8 @@ make dev-web      # terminal 2 → http://localhost:3000
 
 Registra un worker en *Configuración → Workers* y arráncalo con
 `DEKEN_WORKER_TOKEN=dkw_… make dev-worker`; después lanza el **autotest de render** en
-*Configuración → Sistema*.
+*Configuración → Sistema*. Para el motor Remotion: `make remotion` (renderer, bundle,
+navegador y render de evaluación de prueba).
 
 ## Estructura
 
@@ -48,8 +55,9 @@ Registra un worker en *Configuración → Workers* y arráncalo con
 apps/web            Next.js 16 + React 19 + TypeScript estricto (interfaz en español)
 services/api        FastAPI: API v1, auth, RBAC, auditoría, trabajos, storage
 workers/runtime     SDK de workers (solo conexiones salientes, sandbox de FFmpeg)
-workers/render      Handlers de render (FFmpeg)
-workers/analysis    Análisis de medios (Sprint 1/3)
+workers/render      Handlers de render (autotest FFmpeg, Remotion) + renderer Node (remotion/)
+workers/analysis    Ingesta de medios con FFmpeg (hash, póster, tira, proxy, forma de onda)
+packages/video-compositions  Composiciones Remotion y esquema de la línea de tiempo
 packages/shared     Contratos (Python), OpenAPI y tipos TS generados
 packages/brand      Tokens de marca DEKEN y pruebas de contraste
 infra               Docker Compose, Dockerfiles, migraciones Alembic, scripts

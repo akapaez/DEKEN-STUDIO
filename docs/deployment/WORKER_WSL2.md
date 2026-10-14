@@ -18,9 +18,26 @@ Dentro de Ubuntu:
 sudo apt update && sudo apt install -y ffmpeg git curl
 curl -LsSf https://astral.sh/uv/install.sh | sh     # instala uv
 git clone <repositorio> deken-studio && cd deken-studio
-uv sync --package deken-render
+uv sync --package deken-render --package deken-analysis
 ffmpeg -hide_banner -encoders | grep -E "libx264|aac"   # deben aparecer
 ```
+
+Motor Remotion (render y composición; ADR 0005). Node 22 + pnpm y las bibliotecas que
+necesita Chrome Headless Shell:
+
+```bash
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash - && sudo apt install -y nodejs
+sudo corepack enable
+sudo apt install -y libnss3 libdbus-1-3 libatk1.0-0 libgbm1 libasound2 libxrandr2 \
+  libxkbcommon0 libxfixes3 libxcomposite1 libxdamage1 libatk-bridge2.0-0 libpango-1.0-0 \
+  libcairo2 libcups2
+pnpm install --frozen-lockfile
+make remotion        # renderer, bundle, navegador y render de evaluación de prueba
+```
+
+Alternativa sin instalar nada de lo anterior: la imagen `infra/docker/worker.Dockerfile`
+ya incluye FFmpeg, Node, el renderer, el bundle y el navegador
+(`docker run --rm deken/worker deken-remotion-check`).
 
 GPU NVIDIA (opcional): con el controlador de Windows actualizado, WSL2 expone la GPU; si
 el FFmpeg instalado incluye `h264_nvenc`, el worker lo declara en sus capacidades. No es

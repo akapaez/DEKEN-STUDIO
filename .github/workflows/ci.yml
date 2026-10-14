@@ -78,7 +78,7 @@ jobs:
       - name: E2E (Playwright)
         run: |
           pnpm --filter @deken/web exec playwright install --with-deps chromium
-          E2E_LOG_DIR=${{ runner.temp }}/e2e-logs infra/scripts/e2e.sh
+          E2E_BROWSER_CHANNEL=chrome E2E_LOG_DIR=${{ runner.temp }}/e2e-logs infra/scripts/e2e.sh
       - name: Copia de seguridad
         run: infra/scripts/backup.sh ${{ runner.temp }}/backups
       - uses: actions/upload-artifact@v4

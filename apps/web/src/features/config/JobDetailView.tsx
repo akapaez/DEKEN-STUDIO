@@ -41,7 +41,13 @@ function mediaSummary(output: Output): Array<[string, string]> {
   return rows;
 }
 
-function VideoOutput({ output, synthetic }: { output: Output; synthetic: boolean }) {
+const OUTPUT_NOTES: Record<string, string> = {
+  "system.render_selftest": " Es una señal sintética de prueba técnica, no contenido de DEKEN.",
+  "system.remotion_eval":
+    " Render de evaluación de Remotion con recursos sintéticos y marca de agua: no apto para uso comercial.",
+};
+
+function VideoOutput({ output, synthetic, note }: { output: Output; synthetic: boolean; note?: string }) {
   const objectId = output.stored_object.id;
   const link = useQuery({
     queryKey: ["download-url", objectId],
@@ -83,7 +89,7 @@ function VideoOutput({ output, synthetic }: { output: Output; synthetic: boolean
       <div className={styles.stack}>
         <Alert tone="success">
           Verificado en el servidor con ffprobe: la salida cumple la especificación solicitada.
-          {synthetic ? " Es una señal sintética de prueba técnica, no contenido de DEKEN." : ""}
+          {note ?? ""}
         </Alert>
         <KeyValues items={mediaSummary(output)} />
         <div className={styles.row}>
@@ -153,7 +159,7 @@ export function JobDetailView({ jobId, canManage }: { jobId: string; canManage: 
       ) : null}
 
       {verifiedVideos.map((o) => (
-        <VideoOutput key={o.stored_object.id} output={o} synthetic={synthetic} />
+        <VideoOutput key={o.stored_object.id} output={o} synthetic={synthetic} note={OUTPUT_NOTES[job.type]} />
       ))}
 
       <KeyValues

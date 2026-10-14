@@ -1,6 +1,12 @@
 import type { JobStatus } from "@deken/shared";
 import { JOB_STATUS_LABELS } from "@deken/shared";
-import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from "react";
+import type {
+  ButtonHTMLAttributes,
+  InputHTMLAttributes,
+  ReactNode,
+  SelectHTMLAttributes,
+  TextareaHTMLAttributes,
+} from "react";
 import { useId } from "react";
 
 import styles from "./ui.module.css";
@@ -126,6 +132,33 @@ export function Field({
           {error}
         </span>
       ) : hint ? (
+        <span id={hintId} className={styles.hint}>
+          {hint}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+export function TextareaField({
+  label,
+  hint,
+  ...textarea
+}: TextareaHTMLAttributes<HTMLTextAreaElement> & { label: string; hint?: string }) {
+  const id = useId();
+  const hintId = `${id}-hint`;
+  return (
+    <div className={styles.field}>
+      <label htmlFor={id} className={styles.fieldLabel}>
+        {label}
+      </label>
+      <textarea
+        id={id}
+        className={cx(styles.input, styles.textarea)}
+        aria-describedby={hint ? hintId : undefined}
+        {...textarea}
+      />
+      {hint ? (
         <span id={hintId} className={styles.hint}>
           {hint}
         </span>

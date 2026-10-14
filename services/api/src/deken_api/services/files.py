@@ -14,13 +14,15 @@ from deken_api.services import audit
 from deken_api.services.audit import AuditContext
 
 _EXTENSIONS = {"video/mp4": "mp4", "image/jpeg": "jpg", "image/png": "png"}
+# El nombre deja claro qué es: un autotest sintético o un render de evaluación (no comercial).
+_PREFIXES = {"system_test": "autotest-sintetico", "evaluation": "evaluacion-remotion"}
 
 
 def download_filename(obj: StoredObject) -> str:
     if obj.original_filename:
         return obj.original_filename
     ext = _EXTENSIONS.get(obj.content_type, "bin")
-    prefix = "autotest-sintetico" if obj.kind == "system_test" else obj.kind
+    prefix = _PREFIXES.get(obj.kind, obj.kind)
     return f"deken-{prefix}-{obj.id}.{ext}"
 
 

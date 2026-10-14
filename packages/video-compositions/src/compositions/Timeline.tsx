@@ -20,7 +20,7 @@ import {
 } from "remotion";
 
 import { ArrivingText } from "../components/primitives";
-import { BRAND_FONT, MONO_FONT, ensureBrandFonts } from "../fonts";
+import { BRAND_FONT_STACK, MONO_FONT_STACK, ensureBrandFonts } from "../fonts";
 import { FORMATS } from "../formats";
 import { centeredCoverReframe, placeContain, placeReframe } from "../schema/geometry";
 import {
@@ -108,7 +108,16 @@ function VideoLayer({ clip, sources, length }: { clip: VideoClip; sources: Resol
 
 const TEXT_COLORS = { white: neutralsDark.text, ink: neutralsDark.background, green: brand.green } as const;
 
-function TextLayer({ clip }: { clip: TextClip }) {
+/**
+ * Banda inferior reservada a los subtítulos (hasta 2 líneas + caja + separación). Los
+ * textos y logos colocados abajo quedan por encima: nunca se tapan entre sí.
+ */
+export function subtitleBand(t: Pick<Timeline, "tracks">): number {
+  const sizes = t.tracks.flatMap((tr) => (tr.kind === "subtitles" && tr.cues.length ? [tr.size_px] : []));
+  return sizes.length ? Math.ceil(Math.max(...sizes) * 1.2 * 2 + 20 + 32) : 0;
+}
+
+function TextLayer({ clip, bottomReserve }: { clip: TextClip; bottomReserve: number }) {
   const { width, height } = useVideoConfig();
   const format = Object.values(FORMATS).find((f) => f.width === width && f.height === height);
   const safe = format?.safe ?? { top: 80, bottom: 80, left: 80, right: 80 };
@@ -124,7 +133,7 @@ function TextLayer({ clip }: { clip: TextClip }) {
     ) : (
       <div
         style={{
-          fontFamily: `${BRAND_FONT}, sans-serif`,
+          fontFamily: BRAND_FONT_STACK,
           fontWeight: clip.weight,
           fontSize: clip.size_px,
           lineHeight: 1.05,
@@ -138,7 +147,7 @@ function TextLayer({ clip }: { clip: TextClip }) {
   return (
     <AbsoluteFill
       style={{
-        padding: `${safe.top}px ${safe.right}px ${safe.bottom}px ${safe.left}px`,
+        padding: `${safe.top}px ${safe.right}px ${safe.bottom + (clip.position === "bottom" ? bottomReserve : 0)}px ${safe.left}px`,
         display: "flex",
         flexDirection: "column",
         justifyContent: justify,
@@ -170,7 +179,7 @@ function SubtitleLayer({ cues, size }: { cues: Array<{ start_frame: number; end_
     >
       <div
         style={{
-          fontFamily: `${BRAND_FONT}, sans-serif`,
+          fontFamily: BRAND_FONT_STACK,
           fontWeight: 800,
           fontSize: size,
           lineHeight: 1.2,
@@ -187,7 +196,7 @@ function SubtitleLayer({ cues, size }: { cues: Array<{ start_frame: number; end_
   );
 }
 
-function BrandLayer({ clip, sources }: { clip: BrandClip; sources: ResolvedSources }) {
+function BrandLayer({ clip, sources, bottomReserve }: { clip: BrandClip; sources: ResolvedSources; bottomReserve: number }) {
   const { width, height } = useVideoConfig();
   const source = sources[brandKey(clip.brand_asset_id)];
   if (!source) throw new Error(`Recurso de marca no resuelto: ${clip.brand_asset_id}`);
@@ -196,8 +205,8 @@ function BrandLayer({ clip, sources }: { clip: BrandClip; sources: ResolvedSourc
   const pos: Record<BrandClip["corner"], CSSProperties> = {
     top_left: { top: safe.top, left: safe.left },
     top_right: { top: safe.top, right: safe.right },
-    bottom_left: { bottom: safe.bottom, left: safe.left },
-    bottom_right: { bottom: safe.bottom, right: safe.right },
+    bottom_left: { bottom: safe.bottom + bottomReserve, left: safe.left },
+    bottom_right: { bottom: safe.bottom + bottomReserve, right: safe.right },
     center: { top: "50%", left: "50%", transform: "translate(-50%, -50%)" },
   };
   // Ancho fijo y alto automático: el logo conserva su proporción.
@@ -209,7 +218,7 @@ function EvaluationWatermark() {
     <AbsoluteFill style={{ alignItems: "center", justifyContent: "flex-start", paddingTop: 48 }}>
       <div
         style={{
-          fontFamily: `${MONO_FONT}, monospace`,
+          fontFamily: MONO_FONT_STACK,
           fontWeight: 600,
           fontSize: 30,
           letterSpacing: "0.16em",
@@ -229,6 +238,7 @@ export function TimelineComposition({ timeline, sources, evaluation }: TimelineP
   ensureBrandFonts();
   const t = timelineSchema.parse(timeline);
   const fps = t.output.fps;
+  const band = subtitleBand(t);
   return (
     <AbsoluteFill style={{ backgroundColor: neutralsDark.background }}>
       {t.tracks.map((track) => {
@@ -245,7 +255,7 @@ export function TimelineComposition({ timeline, sources, evaluation }: TimelineP
           case "text":
             return track.clips.map((clip) => (
               <Sequence key={`${track.id}-${clip.id}`} from={clip.at_frame} durationInFrames={clip.duration_frames}>
-                <TextLayer clip={clip} />
+                <TextLayer clip={clip} bottomReserve={band} />
               </Sequence>
             ));
           case "subtitles":
@@ -253,7 +263,7 @@ export function TimelineComposition({ timeline, sources, evaluation }: TimelineP
           case "brand":
             return track.clips.map((clip) => (
               <Sequence key={`${track.id}-${clip.id}`} from={clip.at_frame} durationInFrames={clip.duration_frames}>
-                <BrandLayer clip={clip} sources={sources} />
+                <BrandLayer clip={clip} sources={sources} bottomReserve={band} />
               </Sequence>
             ));
           case "audio":

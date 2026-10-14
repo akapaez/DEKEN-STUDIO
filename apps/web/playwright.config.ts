@@ -18,5 +18,15 @@ export default defineConfig({
     screenshot: "only-on-failure",
     locale: "es-ES",
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  // E2E_BROWSER_CHANNEL=chrome usa Google Chrome instalado (con H.264/AAC para reproducir
+  // los proxys); sin ella, el Chromium de Playwright.
+  projects: [
+    {
+      name: "chromium",
+      use: {
+        ...devices["Desktop Chrome"],
+        ...(process.env.E2E_BROWSER_CHANNEL ? { channel: process.env.E2E_BROWSER_CHANNEL } : {}),
+      },
+    },
+  ],
 });

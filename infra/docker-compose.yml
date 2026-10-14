@@ -52,7 +52,7 @@ services:
     environment:
       S3_ACCESS_KEY: ${S3_ACCESS_KEY:?define S3_ACCESS_KEY}
       S3_SECRET_KEY: ${S3_SECRET_KEY:?define S3_SECRET_KEY}
-      S3_ALLOWED_ORIGINS: ${S3_ALLOWED_ORIGINS:-http://localhost:3000}
+      S3_ALLOWED_ORIGINS: ${S3_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:3100}
       # Cada bucket es una "colección" con volúmenes propios; los volúmenes no se
       # prealocan, así que un máximo alto no reserva disco.
       SEAWEEDFS_VOLUME_MAX: ${SEAWEEDFS_VOLUME_MAX:-200}

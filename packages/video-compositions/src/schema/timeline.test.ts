@@ -167,3 +167,17 @@ describe("geometría: nunca deformar", () => {
     }
   }
 });
+
+describe("composición: textos y subtítulos no se tapan", () => {
+  it("reserva una banda inferior solo si hay subtítulos", async () => {
+    const { subtitleBand } = await import("../compositions/Timeline");
+    expect(subtitleBand(timelineSchema.parse(vertical([])))).toBe(0);
+    const withSubs = timelineSchema.parse(
+      vertical([{ id: "s", kind: "subtitles", size_px: 48, cues: [{ start_frame: 0, end_frame: 30, text: "Hola" }] }]),
+    );
+    // Dos líneas de 48 px con interlineado 1,2 + caja + separación.
+    expect(subtitleBand(withSubs)).toBeGreaterThanOrEqual(48 * 1.2 * 2 + 20);
+    const empty = timelineSchema.parse(vertical([{ id: "s", kind: "subtitles", cues: [] }]));
+    expect(subtitleBand(empty)).toBe(0);
+  });
+});

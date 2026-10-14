@@ -13,11 +13,14 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
 COPY apps/web/package.json apps/web/
 COPY packages/brand/package.json packages/brand/
 COPY packages/shared/ts/package.json packages/shared/ts/
+COPY packages/video-compositions/package.json packages/video-compositions/
 RUN --mount=type=secret,id=extra_ca,required=false \
     if [ -f /run/secrets/extra_ca ]; then export NODE_EXTRA_CA_CERTS=/run/secrets/extra_ca; fi; \
     pnpm install --frozen-lockfile --filter "@deken/web..."
 COPY packages/brand packages/brand
 COPY packages/shared/ts packages/shared/ts
+# Composiciones Remotion: la previsualización (Player) usa las mismas que el render.
+COPY packages/video-compositions packages/video-compositions
 COPY apps/web apps/web
 RUN pnpm --filter @deken/web build
 
