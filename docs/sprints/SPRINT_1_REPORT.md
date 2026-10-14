@@ -1,7 +1,10 @@
 # Informe de Sprint 1 — Biblioteca audiovisual, marca DEKEN e integración de Remotion
 
 Fecha: 2026-10-14 · Estado: **criterios S1-01 a S1-06 y de Remotion (S1-R1 a S1-R5)
-cumplidos**, sin regresiones de Sprint 0. Remotion queda integrado como motor principal
+cumplidos**, sin regresiones de Sprint 0, también en GitHub Actions
+([CI run #3](https://github.com/akapaez/DEKEN-STUDIO/actions/runs/38570127121) backend ·
+[CI run #4](https://github.com/akapaez/DEKEN-STUDIO/actions/runs/38575955545) completo).
+Remotion queda integrado como motor principal
 de composición **en modo evaluación**: los renders comerciales siguen deshabilitados hasta
 que Grupo Deken verifique y regularice la licencia (ver §4).
 
@@ -40,6 +43,19 @@ make check-secrets                         9 secretos buscados en 3.771 ficheros
 deken-remotion-check                       ok: 1080×1920, 30 fps, 5 s, ~16 s por render
 docker build web                           OK (local); worker: etapas Remotion y Python OK en local, imagen completa en CI
 ```
+
+En GitHub Actions (Ubuntu 24.04, [run #4](https://github.com/akapaez/DEKEN-STUDIO/actions/runs/38575955545)),
+los tres trabajos en verde:
+
+- **Lint, tipos y unitarios**: ruff, mypy estricto, OpenAPI/tipos TS y JSON Schema de la
+  timeline al día, `tsc` estricto en los 5 paquetes, ESLint y vitest.
+- **Integración, render real y E2E**: `make remotion` (renderer, bundle, Chrome Headless
+  Shell descargado por Remotion y render de evaluación verificado), pytest con
+  `DEKEN_REQUIRE_REMOTION=1` (Remotion obligatorio, sin omitir tests), build web sin
+  secretos, los 14 E2E con **Google Chrome** (reproducción real del proxy H.264) y copia de
+  seguridad.
+- **Imágenes Docker**: API, web y worker (dependencias de Chrome, Node, renderer, bundle y
+  navegador) y `deken-remotion-check` **dentro de la imagen del worker**.
 
 Tests nuevos por área: contrato compartido (14), unidades de la API para medios, marca,
 esquema y permisos (28), biblioteca de integración (9), marca (6), Remotion de extremo a
@@ -108,7 +124,7 @@ Incidencias detectadas y corregidas por las propias pruebas:
   `.ttf` oficiales en la plataforma todavía (todo lo probado es sintético).
 - En el entorno de desarrollo de esta sesión la red no permite `deb.debian.org` ni
   `remotion.media`: la imagen completa del worker (dependencias de Chrome y descarga del
-  navegador) se ha verificado en GitHub Actions, no en local.
+  navegador) se ha verificado en GitHub Actions (run #4, en verde), no en local.
 - La subida no se reanuda tras recargar la página: se aborta y se vuelve a subir.
 - La forma de onda muestra niveles absolutos; la normalización de sonoridad llegará con
   el montaje (Sprint 3).

@@ -122,6 +122,8 @@ test("S1-01/S1-03/S1-04: subida desde el navegador, ingesta y ficha con reproduc
   // Reproducción real en el navegador (CSP media-src). El Chromium de Playwright no trae
   // H.264; en CI se usa Google Chrome (E2E_BROWSER_CHANNEL=chrome), que sí lo decodifica.
   const h264 = await page.evaluate(() => document.createElement("video").canPlayType('video/mp4; codecs="avc1.64001f"'));
+  // Con Google Chrome (CI) la reproducción es obligatoria; no se acepta saltarla.
+  if (process.env.E2E_BROWSER_CHANNEL) expect(h264, "el navegador debe decodificar H.264").not.toBe("");
   if (h264) {
     await expect
       .poll(() => player.evaluate((v: HTMLVideoElement) => v.readyState), { timeout: 30_000 })
