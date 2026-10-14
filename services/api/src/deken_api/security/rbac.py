@@ -26,15 +26,30 @@ class Permission(StrEnum):
     JOBS_READ = "jobs:read"
     JOBS_MANAGE = "jobs:manage"
     FILES_READ = "files:read"
+    MEDIA_READ = "media:read"
+    MEDIA_WRITE = "media:write"
+    MEDIA_RIGHTS = "media:rights"
+    BRAND_READ = "brand:read"
+    BRAND_MANAGE = "brand:manage"
+    RENDER_CREATE = "render:create"
 
 
 _ALL = frozenset(Permission)
-_READ = frozenset({Permission.SYSTEM_READ, Permission.JOBS_READ, Permission.FILES_READ})
+_READ = frozenset(
+    {
+        Permission.SYSTEM_READ,
+        Permission.JOBS_READ,
+        Permission.FILES_READ,
+        Permission.MEDIA_READ,
+        Permission.BRAND_READ,
+    }
+)
 
 ROLE_PERMISSIONS: Mapping[Role, frozenset[Permission]] = {
     Role.ADMIN: _ALL,
-    Role.EDITOR: _READ | {Permission.JOBS_MANAGE},
-    Role.REVIEWER: _READ,
+    Role.EDITOR: _READ | {Permission.JOBS_MANAGE, Permission.MEDIA_WRITE, Permission.RENDER_CREATE},
+    # Los derechos de imagen los valida quien aprueba contenidos.
+    Role.REVIEWER: _READ | {Permission.MEDIA_RIGHTS},
     Role.VIEWER: _READ,
 }
 

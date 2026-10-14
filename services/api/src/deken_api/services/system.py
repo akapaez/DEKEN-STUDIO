@@ -97,4 +97,8 @@ async def status(db: AsyncSession, app: AppContext) -> dict[str, Any]:
             "configured": settings.ai_configured,
             "provider": settings.ai_provider if settings.ai_configured else None,
         },
+        "remotion": {
+            "license_mode": settings.remotion_license_mode,
+            "commercial_renders_enabled": settings.remotion_license_mode == "company",
+        },
     }

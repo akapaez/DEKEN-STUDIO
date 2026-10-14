@@ -39,6 +39,7 @@ from deken_shared.jobs import (
     CompleteRequest,
     ErrorCode,
     FailRequest,
+    InputRef,
     JobInput,
     JobStatus,
     JobTypeSpec,
@@ -49,12 +50,13 @@ from deken_shared.jobs import (
     ProgressReport,
     get_job_type_spec,
 )
-from deken_shared.media import check_video_spec
+from deken_shared.media import ImageSpec, check_image_spec, check_video_spec
 
 log = get_logger(__name__)
 
 WAKE_KEY = "jobs:wake:{queue}"
 MAX_RESULT_BYTES = 64 * 1024
+MAX_JSON_OUTPUT_BYTES = 2 * 1024 * 1024
 MAX_BACKOFF_SECONDS = 3600
 WAIT_SLICE_SECONDS = 5.0
 
@@ -135,11 +137,16 @@ class JobService:
             {"delay_s": delay, "error": error},
         )
 
-    def _finish(self, job: Job, status: JobStatus, now: datetime) -> None:
+    async def _finish(self, job: Job, status: JobStatus, now: datetime) -> None:
         job.status = status.value
         job.finished_at = now
         job.lease_owner_id = None
         job.lease_expires_at = None
+        # Efectos de dominio (p. ej. estado del activo de la biblioteca) en la misma
+        # transacción que el cambio de estado del trabajo.
+        from deken_api.services import job_hooks
+
+        await job_hooks.on_terminal(self.db, self.app, job)
 
     # --- Creación y consulta (usuarios) -------------------------------------------------
 
@@ -150,7 +157,10 @@ class JobService:
         *,
         ctx: AuditContext,
         priority: int = 0,
+        commit: bool = True,
     ) -> Job:
+        """Crea un trabajo. Con `commit=False` queda en la transacción del llamante, que
+        debe confirmar y después llamar a `wake(job.queue)`."""
         spec = self._spec(job_type)
         try:
             validated = spec.payload_model.model_validate(payload)
@@ -187,9 +197,13 @@ class JobService:
             target_id=job.id,
             details={"type": job.type},
         )
-        await self.db.commit()
-        await self._wake(job.queue)
+        if commit:
+            await self.db.commit()
+            await self._wake(job.queue)
         return job
+
+    async def wake(self, queue: str) -> None:
+        await self._wake(queue)
 
     async def list_jobs(
         self,
@@ -265,7 +279,7 @@ class JobService:
         job = await self._lock(job_id)
         now = _now()
         if job.status == JobStatus.QUEUED.value:
-            self._finish(job, JobStatus.CANCELLED, now)
+            await self._finish(job, JobStatus.CANCELLED, now)
             self._event(job, "cancelled", "Cancelado antes de empezar")
         elif job.status == JobStatus.PROCESSING.value:
             if not job.cancel_requested:
@@ -297,6 +311,9 @@ class JobService:
         job.finished_at = None
         self._event(job, "manual_retry", "Reintento manual", {"previous_status": previous})
         audit.record(self.db, ctx, "job.retry", target_type="job", target_id=job.id)
+        from deken_api.services import job_hooks
+
+        await job_hooks.on_requeued(self.db, self.app, job)
         await self.db.commit()
         await self._wake(job.queue)
         return job
@@ -397,9 +414,49 @@ class JobService:
         )
 
     async def _inputs(self, job: Job) -> list[JobInput]:
-        """Entradas firmadas del trabajo. Los tipos de Sprint 0 no tienen entradas;
-        `media.*` (Sprint 1) referenciará objetos originales por id en su payload."""
-        return []
+        """Entradas firmadas del trabajo (`payload.inputs`), fijadas por la API al crearlo."""
+        refs = [InputRef.model_validate(r) for r in job.payload.get("inputs") or []]
+        if not refs:
+            return []
+        objects = {
+            o.id: o
+            for o in (
+                await self.db.execute(
+                    select(StoredObject).where(StoredObject.id.in_([r.object_id for r in refs]))
+                )
+            ).scalars()
+        }
+        inputs: list[JobInput] = []
+        for ref in refs:
+            obj = objects.get(ref.object_id)
+            if obj is None or obj.status != "available":
+                raise Conflict(
+                    f"La entrada '{ref.name}' ya no está disponible", code="input_unavailable"
+                )
+            signed = self.app.storage.presign_get(
+                obj.key,
+                audience=Audience.WORKER,
+                ttl_seconds=self.settings.input_url_ttl_seconds,
+            )
+            inputs.append(
+                JobInput(
+                    name=ref.name,
+                    object_id=obj.id,
+                    url=signed.url,
+                    content_type=obj.content_type,
+                    size_bytes=obj.size_bytes,
+                    sha256=obj.sha256,
+                    expires_at=signed.expires_at,
+                    kind=ref.kind,
+                    extension=ref.extension,
+                    key=ref.key,
+                    width=ref.width,
+                    height=ref.height,
+                    duration_s=ref.duration_s,
+                    has_audio=ref.has_audio,
+                )
+            )
+        return inputs
 
     async def _owned(self, job_id: uuid.UUID, worker: Worker) -> Job:
         job = await self._lock(job_id)
@@ -448,6 +505,7 @@ class JobService:
                 status_code=413,
             )
         kind, extension = OUTPUT_CONTENT_TYPES[req.content_type]
+        storage_kind = spec.storage_kind_for(spec.payload_model.model_validate(job.payload))
         existing = (
             await self.db.execute(
                 select(JobOutput).where(
@@ -464,8 +522,8 @@ class JobService:
         else:
             obj = StoredObject(
                 bucket=self.app.storage.bucket,
-                key=build_object_key(spec.storage_kind, job.id, job.attempts, extension=extension),
-                kind=spec.storage_kind,
+                key=build_object_key(storage_kind, job.id, job.attempts, extension=extension),
+                kind=storage_kind,
                 status="pending",
                 content_type=req.content_type,
                 created_by_job_id=job.id,
@@ -506,7 +564,7 @@ class JobService:
         job = await self._owned(job_id, worker)
         now = _now()
         if job.cancel_requested:
-            self._finish(job, JobStatus.CANCELLED, now)
+            await self._finish(job, JobStatus.CANCELLED, now)
             self._event(job, "cancelled", "Cancelado (la salida se descarta)")
             await self.db.commit()
             return job
@@ -528,7 +586,8 @@ class JobService:
         problems: dict[str, list[str]] = {}
         media_infos: dict[str, dict[str, Any]] = {}
 
-        for name in sorted(set(spec.outputs) - set(declared)):
+        required = {n for n, o in spec.outputs.items() if o.required}
+        for name in sorted(required - set(declared)):
             problems[name] = ["salida obligatoria no entregada"]
 
         payload = spec.payload_model.model_validate(job.payload)
@@ -562,7 +621,7 @@ class JobService:
                 "details": problems,
                 "attempt": job.attempts,
             }
-            self._finish(job, JobStatus.FAILED, now)
+            await self._finish(job, JobStatus.FAILED, now)
             self._event(job, "verification_failed", "Verificación de salida fallida", problems)
             await self.db.commit()
             return job
@@ -585,7 +644,7 @@ class JobService:
         job.progress = 1.0
         job.progress_message = "Completado y verificado"
         job.error = None
-        self._finish(job, JobStatus.COMPLETED, now)
+        await self._finish(job, JobStatus.COMPLETED, now)
         self._event(job, "completed", "Completado; salidas verificadas en servidor")
         await self.db.commit()
         return job
@@ -618,9 +677,18 @@ class JobService:
             return ["SHA-256 distinto del declarado (fichero corrupto o incompleto)"], None
 
         output_spec = spec.outputs[name]
-        if output_spec.kind is not OutputKind.VIDEO or output_spec.video_spec is None:
+        if output_spec.kind is OutputKind.JSON:
+            if head.size_bytes > MAX_JSON_OUTPUT_BYTES:
+                return ["JSON demasiado grande"], None
+            try:
+                parsed = json.loads(await storage.get_bytes(obj.key))
+            except (ValueError, StorageError) as exc:
+                return [f"JSON no válido: {exc}"], None
+            if not isinstance(parsed, dict):
+                return ["el JSON debe ser un objeto"], None
             return [], None
-        video_spec = output_spec.video_spec(payload)
+        if output_spec.kind not in (OutputKind.VIDEO, OutputKind.IMAGE):
+            return [], None
         url = storage.presign_get(obj.key, audience=Audience.INTERNAL, ttl_seconds=300).url
         try:
             summary = await probe_url(
@@ -629,15 +697,20 @@ class JobService:
                 timeout_s=self.settings.ffprobe_timeout_seconds,
             )
         except (ProbeError, OSError) as exc:
-            return [f"ffprobe no puede leer el vídeo: {exc}"], None
-        issues = check_video_spec(summary, video_spec)
+            return [f"ffprobe no puede leer el fichero: {exc}"], None
+        if output_spec.kind is OutputKind.IMAGE:
+            image_issues = check_image_spec(summary, output_spec.image_spec or ImageSpec())
+            return image_issues, summary.model_dump(mode="json")
+        if output_spec.video_spec is None:
+            return [], summary.model_dump(mode="json")
+        issues = check_video_spec(summary, output_spec.video_spec(payload))
         return issues, summary.model_dump(mode="json")
 
     async def fail(self, job_id: uuid.UUID, worker: Worker, req: FailRequest) -> Job:
         job = await self._owned(job_id, worker)
         now = _now()
         if job.cancel_requested:
-            self._finish(job, JobStatus.CANCELLED, now)
+            await self._finish(job, JobStatus.CANCELLED, now)
             self._event(job, "cancelled", "Cancelado durante la ejecución")
             await self.db.commit()
             return job
@@ -654,7 +727,7 @@ class JobService:
             await self._wake(job.queue)
         else:
             job.error = error
-            self._finish(job, JobStatus.FAILED, now)
+            await self._finish(job, JobStatus.FAILED, now)
             self._event(job, "failed", req.message, {"code": req.code})
             await self.db.commit()
         return job
@@ -663,7 +736,7 @@ class JobService:
         job = await self._owned(job_id, worker)
         if not job.cancel_requested:
             raise Conflict("No se ha solicitado cancelar este trabajo", code="not_cancelling")
-        self._finish(job, JobStatus.CANCELLED, _now())
+        await self._finish(job, JobStatus.CANCELLED, _now())
         self._event(job, "cancelled", "Cancelación confirmada por el worker")
         await self.db.commit()
         return job
@@ -688,7 +761,7 @@ class JobService:
                 "attempt": job.attempts,
             }
             if job.cancel_requested:
-                self._finish(job, JobStatus.CANCELLED, now)
+                await self._finish(job, JobStatus.CANCELLED, now)
                 self._event(job, "cancelled", "Cancelado (worker sin respuesta)")
             elif job.attempts < job.max_attempts:
                 self._event(job, "lease_expired", error["message"])
@@ -696,7 +769,7 @@ class JobService:
                 queues.add(job.queue)
             else:
                 job.error = {**error, "retryable": False}
-                self._finish(job, JobStatus.FAILED, now)
+                await self._finish(job, JobStatus.FAILED, now)
                 self._event(job, "failed", "Lease expirado y reintentos agotados")
         await self.db.commit()
         if queues:

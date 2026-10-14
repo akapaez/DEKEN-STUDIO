@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import re
 import uuid
@@ -31,6 +32,7 @@ KIND_PREFIXES = {
     "render": "renders",
     "brand": "brand",
     "system_test": "system",
+    "evaluation": "evaluation",
 }
 
 _SAFE_FILENAME = re.compile(r"[^A-Za-z0-9._ -]+")
@@ -174,6 +176,91 @@ class ObjectStorage:
             )
 
         await anyio.to_thread.run_sync(_put)
+
+    async def get_bytes(self, key: str, *, max_bytes: int = 64 * 1024 * 1024) -> bytes:
+        def _get() -> bytes:
+            body = self.internal.get_object(Bucket=self.bucket, Key=key)["Body"]
+            data = body.read(max_bytes + 1)
+            if len(data) > max_bytes:
+                raise StorageError("objeto demasiado grande para leer en memoria")
+            return bytes(data)
+
+        try:
+            return await anyio.to_thread.run_sync(_get)
+        except ClientError as exc:
+            raise StorageError(str(exc)) from exc
+
+    # --- Subida multiparte (originales grandes) ----------------------------------------
+
+    async def create_multipart(self, key: str, content_type: str) -> str:
+        def _create() -> str:
+            resp = self.internal.create_multipart_upload(
+                Bucket=self.bucket, Key=key, ContentType=content_type
+            )
+            return str(resp["UploadId"])
+
+        return await anyio.to_thread.run_sync(_create)
+
+    def presign_upload_part(
+        self, key: str, upload_id: str, part_number: int, *, ttl_seconds: int
+    ) -> PresignedUrl:
+        url = self._client(Audience.BROWSER).generate_presigned_url(
+            "upload_part",
+            Params={
+                "Bucket": self.bucket,
+                "Key": key,
+                "UploadId": upload_id,
+                "PartNumber": part_number,
+            },
+            ExpiresIn=ttl_seconds,
+        )
+        return PresignedUrl(url=url, expires_at=_expiry(ttl_seconds), headers={})
+
+    async def list_parts(self, key: str, upload_id: str) -> list[dict[str, Any]]:
+        def _list() -> list[dict[str, Any]]:
+            parts: list[dict[str, Any]] = []
+            marker = 0
+            while True:
+                resp = self.internal.list_parts(
+                    Bucket=self.bucket, Key=key, UploadId=upload_id, PartNumberMarker=marker
+                )
+                parts.extend(
+                    {"PartNumber": p["PartNumber"], "ETag": p["ETag"], "Size": p["Size"]}
+                    for p in resp.get("Parts", [])
+                )
+                if not resp.get("IsTruncated"):
+                    return parts
+                marker = int(resp["NextPartNumberMarker"])
+
+        try:
+            return await anyio.to_thread.run_sync(_list)
+        except ClientError as exc:
+            raise StorageError(str(exc)) from exc
+
+    async def complete_multipart(
+        self, key: str, upload_id: str, parts: list[dict[str, Any]]
+    ) -> None:
+        def _complete() -> None:
+            self.internal.complete_multipart_upload(
+                Bucket=self.bucket,
+                Key=key,
+                UploadId=upload_id,
+                MultipartUpload={
+                    "Parts": [{"PartNumber": p["PartNumber"], "ETag": p["ETag"]} for p in parts]
+                },
+            )
+
+        try:
+            await anyio.to_thread.run_sync(_complete)
+        except ClientError as exc:
+            raise StorageError(str(exc)) from exc
+
+    async def abort_multipart(self, key: str, upload_id: str) -> None:
+        def _abort() -> None:
+            self.internal.abort_multipart_upload(Bucket=self.bucket, Key=key, UploadId=upload_id)
+
+        with contextlib.suppress(ClientError):  # ya completada o abortada
+            await anyio.to_thread.run_sync(_abort)
 
     async def delete(self, key: str) -> None:
         await anyio.to_thread.run_sync(

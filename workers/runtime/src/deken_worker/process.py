@@ -196,3 +196,91 @@ def verify_decodes(
     )
     if errors.strip():
         raise ProcessFailedError(0, f"errores de decodificación: {errors}")
+
+
+def run_json_lines(
+    cmd: list[str],
+    *,
+    cwd: Path,
+    timeout_s: float,
+    cancel: threading.Event | None = None,
+    on_event: Callable[[dict[str, object]], None] | None = None,
+    env: dict[str, str] | None = None,
+    grace_s: float = 15.0,
+) -> tuple[int, list[dict[str, object]], str]:
+    """Ejecuta un proceso que informa con una línea JSON por evento en stdout.
+
+    En cancelación envía SIGTERM (el proceso puede limpiar y confirmar) y, si no termina
+    en `grace_s`, lo mata. Devuelve (código, eventos, cola de stderr)."""
+    proc = subprocess.Popen(  # noqa: S603 - lista de argumentos, sin shell
+        cmd,
+        cwd=cwd,
+        env=env,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    out_q: queue.Queue[str | None] = queue.Queue()
+    stderr_tail: deque[str] = deque(maxlen=60)
+
+    def _collect_stderr() -> None:
+        for line in proc.stderr or []:
+            stderr_tail.append(line.rstrip())
+
+    threading.Thread(target=_pump, args=(proc.stdout, out_q), daemon=True).start()
+    t_err = threading.Thread(target=_collect_stderr, daemon=True)
+    t_err.start()
+    events: list[dict[str, object]] = []
+    deadline = time.monotonic() + timeout_s
+    terminating_since: float | None = None
+    stdout_open = True
+    timed_out = False
+    try:
+        while True:
+            now = time.monotonic()
+            if terminating_since is None and (
+                (cancel is not None and cancel.is_set()) or now > deadline
+            ):
+                timed_out = now > deadline
+                proc.terminate()
+                terminating_since = now
+            if terminating_since is not None and now - terminating_since > grace_s:
+                proc.kill()
+            if not stdout_open:
+                if proc.poll() is not None:
+                    break
+                time.sleep(0.1)
+                continue
+            try:
+                line = out_q.get(timeout=0.25)
+            except queue.Empty:
+                continue
+            if line is None:
+                stdout_open = False
+                continue
+            line = line.strip()
+            if not line.startswith("{"):
+                continue
+            try:
+                event = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(event, dict):
+                events.append(event)
+                if on_event is not None:
+                    on_event(event)
+    except BaseException:
+        proc.kill()
+        proc.wait(timeout=10)
+        raise
+    proc.wait(timeout=30)
+    t_err.join(timeout=2)
+    tail = "\n".join(stderr_tail)[-3000:]
+    if terminating_since is not None:
+        if timed_out:
+            raise ProcessTimeoutError(f"El proceso superó {timeout_s:.0f}s")
+        raise ProcessCancelledError("cancelado")
+    return proc.returncode or 0, events, tail

@@ -33,7 +33,7 @@ from deken_shared.jobs import JobStatus
 
 ROLE_VALUES = [r.value for r in Role]
 JOB_STATUS_VALUES = [s.value for s in JobStatus]
-OBJECT_KINDS = ["original", "derived", "render", "brand", "system_test"]
+OBJECT_KINDS = ["original", "derived", "render", "brand", "system_test", "evaluation"]
 OBJECT_STATUSES = ["pending", "available", "rejected", "deleted"]
 WORKER_STATUSES = ["active", "revoked"]
 ACTOR_TYPES = ["user", "worker", "system", "anonymous"]
@@ -238,3 +238,171 @@ class JobOutput(Base):
     created_at: Mapped[datetime] = created_at_col()
 
     stored_object: Mapped[StoredObject] = relationship(lazy="joined")
+
+
+# --- Sprint 1: biblioteca audiovisual y marca -----------------------------------------------
+
+MEDIA_STATUSES = [
+    "uploading",  # subida multiparte en curso
+    "processing",  # original validado; ingesta (hash, derivados) en curso
+    "ready",
+    "rejected",  # el fichero no es un vídeo válido
+    "failed",  # error de procesado (reintentable)
+    "duplicate",  # mismo contenido (SHA-256) que otro activo
+    "cancelled",
+]
+PEOPLE_PRESENT = ["yes", "no", "unknown"]
+CONSENT_STATUSES = ["not_required", "pending", "granted", "denied"]
+
+
+class MediaAsset(Base):
+    """Grabación original de DEKEN importada en la biblioteca. El original es inmutable."""
+
+    __tablename__ = "media_assets"
+    __table_args__ = (
+        CheckConstraint(check_in("status", MEDIA_STATUSES), name="status_valid"),
+        CheckConstraint(check_in("people_present", PEOPLE_PRESENT), name="people_valid"),
+        CheckConstraint(check_in("consent_status", CONSENT_STATUSES), name="consent_valid"),
+        Index("ix_media_assets_sha256", "sha256"),
+        Index("ix_media_assets_created_at", "created_at"),
+        Index("ix_media_assets_tags", "tags", postgresql_using="gin"),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    title: Mapped[str] = mapped_column(String(200))
+    description: Mapped[str | None] = mapped_column(Text)
+    original_filename: Mapped[str] = mapped_column(String(255))
+    content_type: Mapped[str] = mapped_column(String(100))
+    declared_size_bytes: Mapped[int] = mapped_column(BigInteger)
+    status: Mapped[str] = mapped_column(String(16), server_default=text("'uploading'"))
+    status_reason: Mapped[str | None] = mapped_column(Text)
+
+    original_object_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("stored_objects.id", ondelete="RESTRICT")
+    )
+    upload_id: Mapped[str | None] = mapped_column(String(255))
+    part_size_bytes: Mapped[int] = mapped_column(BigInteger)
+    part_count: Mapped[int] = mapped_column(Integer)
+    sha256: Mapped[str | None] = mapped_column(String(64))
+    duplicate_of_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("media_assets.id", ondelete="SET NULL")
+    )
+
+    # Metadatos técnicos (ffprobe en servidor).
+    container: Mapped[str | None] = mapped_column(String(100))
+    duration_s: Mapped[float | None] = mapped_column(Float)
+    width: Mapped[int | None] = mapped_column(Integer)
+    height: Mapped[int | None] = mapped_column(Integer)
+    rotation: Mapped[int | None] = mapped_column(Integer)
+    fps: Mapped[float | None] = mapped_column(Float)
+    video_codec: Mapped[str | None] = mapped_column(String(50))
+    audio_codec: Mapped[str | None] = mapped_column(String(50))
+    has_audio: Mapped[bool | None] = mapped_column(Boolean)
+    bit_rate: Mapped[int | None] = mapped_column(BigInteger)
+    probe: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+
+    # Derivados (regenerables).
+    poster_object_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("stored_objects.id", ondelete="SET NULL")
+    )
+    strip_object_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("stored_objects.id", ondelete="SET NULL")
+    )
+    strip_frames: Mapped[int | None] = mapped_column(Integer)
+    proxy_object_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("stored_objects.id", ondelete="SET NULL")
+    )
+    waveform_object_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("stored_objects.id", ondelete="SET NULL")
+    )
+    ingest_job_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("jobs.id", ondelete="SET NULL")
+    )
+
+    # Catalogación.
+    tags: Mapped[list[str]] = mapped_column(ARRAY(String(48)), server_default=text("'{}'"))
+    recorded_at: Mapped[datetime | None]
+    location: Mapped[str | None] = mapped_column(String(200))
+
+    # Derechos de imagen.
+    people_present: Mapped[str] = mapped_column(String(16), server_default=text("'unknown'"))
+    consent_status: Mapped[str] = mapped_column(String(16), server_default=text("'pending'"))
+    consent_reference: Mapped[str | None] = mapped_column(String(300))
+    usage_restrictions: Mapped[str | None] = mapped_column(Text)
+    rights_owner: Mapped[str] = mapped_column(String(200), server_default=text("'Grupo Deken'"))
+    rights_updated_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL")
+    )
+    rights_updated_at: Mapped[datetime | None]
+
+    created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL")
+    )
+    created_at: Mapped[datetime] = created_at_col()
+    updated_at: Mapped[datetime] = updated_at_col()
+    archived_at: Mapped[datetime | None]
+
+
+BRAND_KINDS = ["logo", "font", "image"]
+BRAND_STATUSES = ["uploading", "ready", "rejected", "cancelled"]
+BACKGROUNDS = ["dark", "light", "any"]
+
+
+class BrandAsset(Base):
+    """Recurso oficial de marca (logos, tipografías, imágenes corporativas)."""
+
+    __tablename__ = "brand_assets"
+    __table_args__ = (
+        CheckConstraint(check_in("kind", BRAND_KINDS), name="kind_valid"),
+        CheckConstraint(check_in("status", BRAND_STATUSES), name="status_valid"),
+        CheckConstraint(
+            "recommended_background IS NULL OR " + check_in("recommended_background", BACKGROUNDS),
+            name="recommended_valid",
+        ),
+        CheckConstraint(
+            "usage_background IS NULL OR " + check_in("usage_background", BACKGROUNDS),
+            name="usage_valid",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    kind: Mapped[str] = mapped_column(String(16))
+    name: Mapped[str] = mapped_column(String(200))
+    family: Mapped[str | None] = mapped_column(String(64))
+    declared_color: Mapped[str | None] = mapped_column(String(32))
+    status: Mapped[str] = mapped_column(String(16), server_default=text("'uploading'"))
+    status_reason: Mapped[str | None] = mapped_column(Text)
+    object_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("stored_objects.id", ondelete="RESTRICT")
+    )
+    preview_object_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("stored_objects.id", ondelete="SET NULL")
+    )
+    original_filename: Mapped[str] = mapped_column(String(255))
+    content_type: Mapped[str] = mapped_column(String(100))
+    declared_size_bytes: Mapped[int] = mapped_column(BigInteger)
+    sha256: Mapped[str | None] = mapped_column(String(64))
+
+    width: Mapped[int | None] = mapped_column(Integer)
+    height: Mapped[int | None] = mapped_column(Integer)
+    aspect_ratio: Mapped[float | None] = mapped_column(Float)
+    has_alpha: Mapped[bool | None] = mapped_column(Boolean)
+    measured_color_hex: Mapped[str | None] = mapped_column(String(7))
+    measured_color_name: Mapped[str | None] = mapped_column(String(32))
+    color_mismatch: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    recommended_background: Mapped[str | None] = mapped_column(String(16))
+    usage_background: Mapped[str | None] = mapped_column(String(16))
+    analysis: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+
+    font_family: Mapped[str | None] = mapped_column(String(100))
+    font_style: Mapped[str | None] = mapped_column(String(50))
+    font_weight: Mapped[int | None] = mapped_column(Integer)
+
+    license_ref: Mapped[str | None] = mapped_column(String(200))
+    notes: Mapped[str | None] = mapped_column(Text)
+    created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL")
+    )
+    created_at: Mapped[datetime] = created_at_col()
+    updated_at: Mapped[datetime] = updated_at_col()
+    archived_at: Mapped[datetime | None]

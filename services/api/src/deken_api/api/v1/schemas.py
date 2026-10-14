@@ -245,6 +245,11 @@ class AiStatus(BaseModel):
     provider: str | None
 
 
+class RemotionStatus(BaseModel):
+    license_mode: Literal["evaluation", "company"]
+    commercial_renders_enabled: bool
+
+
 class SystemStatusOut(BaseModel):
     status: Literal["ok", "degraded", "error"]
     version: str
@@ -255,3 +260,195 @@ class SystemStatusOut(BaseModel):
     workers: WorkersStatus
     jobs: JobsStatus
     ai: AiStatus
+    remotion: RemotionStatus
+
+
+# --- Biblioteca audiovisual (Sprint 1) ------------------------------------------------------
+
+MediaStatus = Literal[
+    "uploading", "processing", "ready", "rejected", "failed", "duplicate", "cancelled"
+]
+PeoplePresent = Literal["yes", "no", "unknown"]
+ConsentStatus = Literal["not_required", "pending", "granted", "denied"]
+
+
+class MediaUploadRequest(_In):
+    filename: str = Field(min_length=1, max_length=255)
+    size_bytes: int = Field(gt=0)
+    content_type: str = Field(default="", max_length=100)
+    title: str | None = Field(default=None, max_length=200)
+
+
+class MediaUploadOut(BaseModel):
+    asset_id: uuid.UUID
+    part_size_bytes: int
+    part_count: int
+    max_parts_per_request: int
+
+
+class PartUrlsRequest(_In):
+    part_numbers: list[int] = Field(min_length=1, max_length=1000)
+
+
+class PartUrlOut(BaseModel):
+    part_number: int
+    url: str
+
+
+class MediaAssetOut(BaseModel):
+    id: uuid.UUID
+    title: str
+    description: str | None
+    original_filename: str
+    status: MediaStatus
+    status_reason: str | None
+    declared_size_bytes: int
+    sha256: str | None
+    duplicate_of_id: uuid.UUID | None
+    container: str | None
+    duration_s: float | None
+    width: int | None
+    height: int | None
+    orientation: str | None
+    rotation: int | None
+    fps: float | None
+    video_codec: str | None
+    audio_codec: str | None
+    has_audio: bool | None
+    tags: list[str]
+    recorded_at: datetime | None
+    location: str | None
+    people_present: PeoplePresent
+    consent_status: ConsentStatus
+    consent_reference: str | None
+    usage_restrictions: str | None
+    rights_owner: str
+    rights_updated_at: datetime | None
+    usable_for_production: bool
+    ingest_job_id: uuid.UUID | None
+    poster_url: str | None
+    strip_url: str | None
+    strip_frames: int | None
+    created_at: datetime
+    archived_at: datetime | None
+
+
+class MediaAssetDetailOut(MediaAssetOut):
+    proxy_url: str | None
+    has_waveform: bool
+    original_object: StoredObjectOut | None
+    derivatives: dict[str, StoredObjectOut]
+    probe: dict[str, Any] | None
+
+
+class MediaListOut(BaseModel):
+    items: list[MediaAssetOut]
+    total: int
+
+
+class MediaUpdateRequest(_In):
+    title: str | None = Field(default=None, min_length=1, max_length=200)
+    description: str | None = Field(default=None, max_length=4000)
+    tags: list[str] | None = Field(default=None, max_length=30)
+    recorded_at: datetime | None = None
+    location: str | None = Field(default=None, max_length=200)
+
+
+class MediaRightsRequest(_In):
+    people_present: PeoplePresent | None = None
+    consent_status: ConsentStatus | None = None
+    consent_reference: str | None = Field(default=None, max_length=300)
+    usage_restrictions: str | None = Field(default=None, max_length=4000)
+    rights_owner: str | None = Field(default=None, min_length=1, max_length=200)
+
+
+class TagCountOut(BaseModel):
+    tag: str
+    count: int
+
+
+class WaveformOut(BaseModel):
+    version: int
+    duration_s: float
+    peaks: list[float]
+
+
+# --- Marca DEKEN (Sprint 1) -------------------------------------------------------------------
+
+BrandKind = Literal["logo", "font", "image"]
+Background = Literal["dark", "light", "any"]
+
+
+class BrandUploadRequest(_In):
+    kind: BrandKind
+    name: str = Field(min_length=1, max_length=200)
+    filename: str = Field(min_length=1, max_length=255)
+    size_bytes: int = Field(gt=0)
+    declared_color: str | None = Field(default=None, max_length=32, pattern=r"^[a-z]+(-[a-z]+)?$")
+    family: str | None = Field(default=None, max_length=64)
+    license_ref: str | None = Field(default=None, max_length=200)
+
+
+class BrandUploadOut(BaseModel):
+    asset_id: uuid.UUID
+    upload_url: str
+    headers: dict[str, str]
+
+
+class BrandAssetOut(BaseModel):
+    id: uuid.UUID
+    kind: BrandKind
+    name: str
+    family: str | None
+    status: str
+    status_reason: str | None
+    original_filename: str
+    width: int | None
+    height: int | None
+    aspect_ratio: float | None
+    has_alpha: bool | None
+    declared_color: str | None
+    measured_color_name: str | None
+    measured_color_hex: str | None
+    color_mismatch: bool
+    recommended_background: Background | None
+    usage_background: Background | None
+    font_family: str | None
+    font_style: str | None
+    font_weight: int | None
+    license_ref: str | None
+    notes: str | None
+    analysis: dict[str, Any] | None
+    preview_url: str | None
+    created_at: datetime
+
+
+class BrandUpdateRequest(_In):
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    usage_background: Background | None = None
+    family: str | None = Field(default=None, max_length=64)
+    declared_color: str | None = Field(default=None, max_length=32, pattern=r"^[a-z]+(-[a-z]+)?$")
+    notes: str | None = Field(default=None, max_length=2000)
+    license_ref: str | None = Field(default=None, max_length=200)
+
+
+# --- Renders con Remotion -------------------------------------------------------------------
+
+
+class RemotionEvalRequest(_In):
+    title: str = Field(default="DEKEN STUDIO AI", min_length=1, max_length=40)
+    subtitle: str = Field(default="Motor de composición", min_length=1, max_length=60)
+
+
+class TimelineRenderRequest(_In):
+    timeline: dict[str, Any]
+    purpose: Literal["evaluation", "production"] = "evaluation"
+    title: str | None = Field(default=None, max_length=200)
+
+
+class RenderEngineOut(BaseModel):
+    engine: Literal["remotion"]
+    license_mode: Literal["evaluation", "company"]
+    commercial_renders_enabled: bool
+    workers_with_remotion: list[str]
+    note: str

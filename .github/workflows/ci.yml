@@ -33,14 +33,16 @@ jobs:
           uv run ruff check .
           uv run ruff format --check .
       - name: mypy (estricto)
-        run: uv run mypy packages/shared/python/src services/api/src workers/runtime/src workers/render/src
-      - name: OpenAPI y tipos TS al día
-        run: pnpm --filter @deken/shared check-generated
+        run: uv run mypy packages/shared/python/src services/api/src workers/runtime/src workers/render/src workers/analysis/src
+      - name: OpenAPI, tipos TS y esquema de la línea de tiempo al día
+        run: |
+          pnpm --filter @deken/shared check-generated
+          pnpm --filter @deken/video-compositions check-schema
       - name: TypeScript (estricto) y ESLint
         run: |
           pnpm -r typecheck
           pnpm --filter @deken/web lint
-      - name: Tests unitarios web y marca
+      - name: Tests unitarios (web, marca, composiciones y renderer)
         run: pnpm -r test
 
   integration:
@@ -65,7 +67,11 @@ jobs:
         run: make services-up
       - name: Migraciones
         run: make migrate
-      - name: Tests Python (integración + render real)
+      - name: Motor Remotion (renderer, bundle, navegador y prueba técnica)
+        run: make remotion
+      - name: Tests Python (integración + render real FFmpeg y Remotion)
+        env:
+          DEKEN_REQUIRE_REMOTION: "1"
         run: make test-py
       - name: Build web y comprobación de secretos
         run: make check-secrets
@@ -94,4 +100,6 @@ jobs:
       - uses: docker/setup-buildx-action@v3
       - run: docker build -f infra/docker/api.Dockerfile -t deken/api:ci .
       - run: docker build -f infra/docker/worker.Dockerfile -t deken/worker:ci .
+      - name: Remotion dentro de la imagen del worker (render de evaluación verificado)
+        run: docker run --rm deken/worker:ci deken-remotion-check
       - run: docker build -f infra/docker/web.Dockerfile -t deken/web:ci .

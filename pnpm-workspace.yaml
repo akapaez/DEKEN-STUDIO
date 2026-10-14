@@ -2,6 +2,9 @@ packages:
   - "apps/*"
   - "packages/brand"
   - "packages/shared/ts"
+  - "packages/video-compositions"
+  - "workers/render/remotion"
 onlyBuiltDependencies:
+  - esbuild
   - sharp
   - unrs-resolver

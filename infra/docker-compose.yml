@@ -93,6 +93,8 @@ services:
       DEKEN_AI_PROVIDER: ${DEKEN_AI_PROVIDER:-}
       DEKEN_AI_API_KEY: ${DEKEN_AI_API_KEY:-}
       DEKEN_AI_MODEL: ${DEKEN_AI_MODEL:-}
+      # Puerta de licencia de Remotion (ADR 0005). La clave NO va a la API.
+      DEKEN_REMOTION_LICENSE_MODE: ${DEKEN_REMOTION_LICENSE_MODE:-evaluation}
     ports:
       - "127.0.0.1:${API_PORT:-8000}:8000"
     healthcheck:
@@ -125,6 +127,8 @@ services:
       DEKEN_API_URL: ${WORKER_API_URL:-http://api:8000}
       DEKEN_WORKER_TOKEN: ${DEKEN_WORKER_TOKEN:-}
       DEKEN_WORKER_QUEUES: render,analysis
+      DEKEN_REMOTION_LICENSE_MODE: ${DEKEN_REMOTION_LICENSE_MODE:-evaluation}
+      DEKEN_REMOTION_LICENSE_KEY: ${DEKEN_REMOTION_LICENSE_KEY:-}
     # Sin puertos publicados: el worker solo abre conexiones salientes.
 
 volumes:

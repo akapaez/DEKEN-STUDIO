@@ -1,0 +1,32 @@
+{
+  "name": "@deken/remotion-renderer",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Motor de render Remotion para los workers de DEKEN STUDIO AI",
+  "type": "module",
+  "bin": {
+    "deken-remotion-render": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "bundle": "node dist/bundle.js dist/bundle",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "browser": "node scripts/ensure-browser.mjs"
+  },
+  "dependencies": {
+    "@deken/video-compositions": "workspace:*",
+    "@remotion/bundler": "4.0.531",
+    "@remotion/renderer": "4.0.531",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "remotion": "4.0.531",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.3",
+    "typescript": "5.9.3",
+    "vitest": "4.1.11",
+    "esbuild": "0.28.1"
+  }
+}

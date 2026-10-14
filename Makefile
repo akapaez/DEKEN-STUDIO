@@ -5,7 +5,7 @@ DEV_ENV := source infra/scripts/dev-env.sh
 
 .PHONY: help setup env services-up services-down services-ps migrate admin dev-api dev-web \
 	dev-worker lint typecheck test test-py test-web e2e build check-generated check-secrets \
-	generate-api images backup ci
+	generate-api remotion images backup ci
 
 help: ## Muestra esta ayuda
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[1m%-16s\033[0m %s\n", $$1, $$2}'
@@ -62,7 +62,7 @@ lint: ## Ruff + ESLint
 	pnpm --filter @deken/web lint
 
 typecheck: ## mypy estricto + tsc estricto
-	uv run mypy packages/shared/python/src services/api/src workers/runtime/src workers/render/src
+	uv run mypy packages/shared/python/src services/api/src workers/runtime/src workers/render/src workers/analysis/src
 	pnpm -r typecheck
 
 test-py: ## Tests Python (integración contra los servicios de infra)
@@ -81,6 +81,13 @@ check-secrets: build ## Comprueba que ningún secreto acaba en el build web
 
 e2e: build ## E2E con servicios reales y BD temporal
 	infra/scripts/e2e.sh
+
+remotion: ## Compila el renderer Remotion, genera el bundle e instala su navegador
+	pnpm --filter @deken/video-compositions check-schema
+	pnpm --filter @deken/remotion-renderer build
+	pnpm --filter @deken/remotion-renderer bundle
+	pnpm --filter @deken/remotion-renderer browser
+	$(DEV_ENV) && uv run deken-remotion-check
 
 images: ## Construye las imágenes Docker
 	docker build -f infra/docker/api.Dockerfile -t deken/api:dev .

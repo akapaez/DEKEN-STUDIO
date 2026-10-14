@@ -1,0 +1,23 @@
+[project]
+name = "deken-analysis"
+version = "0.1.0"
+description = "Handlers de análisis de medios (FFmpeg) de DEKEN STUDIO AI"
+requires-python = ">=3.12"
+dependencies = [
+    "deken-shared",
+    "deken-worker",
+]
+
+[project.entry-points."deken_worker.handlers"]
+analysis = "deken_analysis.handlers:HANDLERS"
+
+[build-system]
+requires = ["uv_build>=0.8,<0.12"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "deken_analysis"
+
+[tool.uv.sources]
+deken-shared = { workspace = true }
+deken-worker = { workspace = true }

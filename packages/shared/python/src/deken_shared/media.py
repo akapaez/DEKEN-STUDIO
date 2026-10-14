@@ -24,7 +24,7 @@ class VideoSpec(BaseModel):
     container: Literal["mp4"] = "mp4"
     width: int = Field(default=1080, ge=16, le=7680)
     height: int = Field(default=1920, ge=16, le=7680)
-    fps: int = Field(default=30, ge=1, le=120)
+    fps: float = Field(default=30, ge=1, le=120)
     video_codec: Literal["h264"] = "h264"
     pix_fmt: Literal["yuv420p"] = "yuv420p"
     audio_codec: Literal["aac"] | None = "aac"
@@ -43,6 +43,16 @@ class VideoSpec(BaseModel):
     @property
     def expected_frames(self) -> int:
         return round(self.duration_s * self.fps)
+
+
+class ImageSpec(BaseModel):
+    """Especificación mínima de una imagen derivada (miniatura, póster, tira)."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    codecs: tuple[str, ...] = ("mjpeg", "png", "webp")
+    max_width: int = Field(default=8192, ge=1)
+    max_height: int = Field(default=8192, ge=1)
 
 
 class StreamSummary(BaseModel):
@@ -64,6 +74,21 @@ class StreamSummary(BaseModel):
     sample_rate: int | None = None
     channels: int | None = None
     bit_rate: int | None = None
+    rotation: int | None = None
+    """Rotación de visualización en grados (metadato del móvil): 0, 90, 180 o 270."""
+
+    @property
+    def display_size(self) -> tuple[int, int] | None:
+        """Tamaño tal como se ve: aplica relación de aspecto de píxel y rotación."""
+        if not self.width or not self.height:
+            return None
+        width, height = self.width, self.height
+        sar = parse_ratio(self.sample_aspect_ratio)
+        if sar and abs(sar - 1) > 1e-3:
+            width = round(width * sar)
+        if self.rotation in (90, 270):
+            width, height = height, width
+        return width, height
 
 
 class ProbeSummary(BaseModel):
@@ -83,6 +108,38 @@ class ProbeSummary(BaseModel):
     @property
     def audio_streams(self) -> list[StreamSummary]:
         return [s for s in self.streams if s.codec_type == "audio"]
+
+
+def parse_ratio(value: object) -> float | None:
+    """'16:9' → 1.777…; '0:1' o valores no válidos → None."""
+    if not isinstance(value, str) or ":" not in value:
+        return None
+    num, _, den = value.partition(":")
+    try:
+        n, d = int(num), int(den)
+    except ValueError:
+        return None
+    if n <= 0 or d <= 0:
+        return None
+    return n / d
+
+
+def _rotation(raw: dict[str, Any]) -> int | None:
+    """Rotación normalizada (0/90/180/270) desde la matriz de visualización o la etiqueta."""
+    value: object = None
+    for side in raw.get("side_data_list") or []:
+        if isinstance(side, dict) and "rotation" in side:
+            value = side["rotation"]
+            break
+    if value is None:
+        tags = raw.get("tags")
+        if isinstance(tags, dict):
+            value = tags.get("rotate")
+    try:
+        degrees = round(float(str(value)))
+    except (TypeError, ValueError):
+        return None
+    return degrees % 360 if degrees % 90 == 0 else None
 
 
 def parse_rate(value: object) -> float | None:
@@ -148,6 +205,7 @@ def parse_ffprobe_json(data: dict[str, Any]) -> ProbeSummary:
                 sample_rate=_int(raw.get("sample_rate")),
                 channels=_int(raw.get("channels")),
                 bit_rate=_int(raw.get("bit_rate")),
+                rotation=_rotation(raw),
             )
         )
     return ProbeSummary(
@@ -182,7 +240,7 @@ def check_video_spec(summary: ProbeSummary, spec: VideoSpec) -> list[str]:
             problems.append(
                 f"relación de aspecto de píxel {v.sample_aspect_ratio} (imagen deformada)"
             )
-        if v.avg_frame_rate is None or abs(v.avg_frame_rate - spec.fps) > 0.01:
+        if v.avg_frame_rate is None or abs(v.avg_frame_rate - spec.fps) > 0.02:
             problems.append(f"fps {v.avg_frame_rate} no es {spec.fps}")
         if v.nb_frames is None:
             problems.append("no se puede contar el número de fotogramas")
@@ -220,4 +278,19 @@ def check_video_spec(summary: ProbeSummary, spec: VideoSpec) -> list[str]:
             f" ±{spec.container_tolerance_s}s"
         )
 
+    return problems
+
+
+def check_image_spec(summary: ProbeSummary, spec: ImageSpec) -> list[str]:
+    problems: list[str] = []
+    videos = summary.video_streams
+    if len(videos) != 1:
+        return [f"se esperaba una imagen y hay {len(videos)} pistas de imagen"]
+    v = videos[0]
+    if v.codec_name not in spec.codecs:
+        problems.append(f"formato de imagen '{v.codec_name}' no admitido")
+    if not v.width or not v.height:
+        problems.append("la imagen no tiene dimensiones")
+    elif v.width > spec.max_width or v.height > spec.max_height:
+        problems.append(f"imagen de {v.width}x{v.height} demasiado grande")
     return problems

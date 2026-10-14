@@ -1,15 +1,22 @@
 [project]
 name = "deken-render"
 version = "0.1.0"
-description = "Handlers de render (FFmpeg) de DEKEN STUDIO AI"
+description = "Handlers de render (FFmpeg y Remotion) de DEKEN STUDIO AI"
 requires-python = ">=3.12"
 dependencies = [
     "deken-shared",
     "deken-worker",
+    "pydantic-settings>=2.10",
 ]
+
+[project.scripts]
+deken-remotion-check = "deken_render.remotion_check:main"
 
 [project.entry-points."deken_worker.handlers"]
 render = "deken_render.handlers:HANDLERS"
+
+[project.entry-points."deken_worker.engines"]
+remotion = "deken_render.remotion:describe_engine"
 
 [build-system]
 requires = ["uv_build>=0.8,<0.12"]

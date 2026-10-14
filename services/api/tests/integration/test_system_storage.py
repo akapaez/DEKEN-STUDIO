@@ -55,10 +55,11 @@ async def test_ready_reports_failures(settings: Settings) -> None:
 async def test_system_status_reports_real_state(admin_client: ApiClient) -> None:
     status = (await admin_client.get("/api/v1/system/status")).json()
     assert status["status"] == "ok"
-    assert status["checks"]["database"]["migration"] == "0001"
+    assert status["checks"]["database"]["migration"] == "0002"
     assert status["ffprobe"]["available"] is True
     assert status["workers"] == {"active": 0, "online": 0, "online_names": []}
     assert status["ai"] == {"configured": False, "provider": None}
+    assert status["remotion"] == {"license_mode": "evaluation", "commercial_renders_enabled": False}
 
 
 async def test_presigned_upload_and_download(ctx: AppContext) -> None:

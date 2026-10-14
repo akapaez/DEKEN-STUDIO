@@ -39,6 +39,38 @@ PROTECTED: list[tuple[str, str, dict[str, object] | None, Permission]] = [
     ("POST", f"/api/v1/jobs/{_ID}/retry", None, Permission.JOBS_MANAGE),
     ("GET", f"/api/v1/files/{_ID}/download-url", None, Permission.FILES_READ),
     ("GET", "/api/v1/audit", None, Permission.AUDIT_READ),
+    # Sprint 1: biblioteca, marca y renders.
+    ("GET", "/api/v1/media/assets", None, Permission.MEDIA_READ),
+    ("GET", "/api/v1/media/tags", None, Permission.MEDIA_READ),
+    ("GET", f"/api/v1/media/assets/{_ID}", None, Permission.MEDIA_READ),
+    ("GET", f"/api/v1/media/assets/{_ID}/original-url", None, Permission.MEDIA_READ),
+    (
+        "POST",
+        "/api/v1/media/uploads",
+        {"filename": "a.mp4", "size_bytes": 10},
+        Permission.MEDIA_WRITE,
+    ),
+    ("POST", f"/api/v1/media/uploads/{_ID}/complete", None, Permission.MEDIA_WRITE),
+    ("PATCH", f"/api/v1/media/assets/{_ID}", {"title": "x"}, Permission.MEDIA_WRITE),
+    ("POST", f"/api/v1/media/assets/{_ID}/archive", None, Permission.MEDIA_WRITE),
+    (
+        "PUT",
+        f"/api/v1/media/assets/{_ID}/rights",
+        {"people_present": "no"},
+        Permission.MEDIA_RIGHTS,
+    ),
+    ("GET", "/api/v1/brand/assets", None, Permission.BRAND_READ),
+    (
+        "POST",
+        "/api/v1/brand/uploads",
+        {"kind": "logo", "name": "x", "filename": "x.png", "size_bytes": 10},
+        Permission.BRAND_MANAGE,
+    ),
+    ("PATCH", f"/api/v1/brand/assets/{_ID}", {"name": "x"}, Permission.BRAND_MANAGE),
+    ("POST", f"/api/v1/brand/assets/{_ID}/archive", None, Permission.BRAND_MANAGE),
+    ("GET", "/api/v1/renders/engine", None, Permission.SYSTEM_READ),
+    ("POST", "/api/v1/renders/evaluation", {}, Permission.SYSTEM_MANAGE),
+    ("POST", "/api/v1/renders/timeline", {"timeline": {}}, Permission.RENDER_CREATE),
 ]
 
 

@@ -1,0 +1,45 @@
+{
+  "name": "@deken/video-compositions",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Composiciones Remotion reutilizables de DEKEN STUDIO AI y esquema de la l\u00ednea de tiempo v1",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./schema": "./src/schema/index.ts",
+    "./entry": "./src/entry.ts",
+    "./package.json": "./package.json",
+    "./timeline.schema.json": "./schema/timeline.schema.json"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "generate:schema": "node ./scripts/generate-schema.mjs",
+    "check-schema": "node ./scripts/generate-schema.mjs --check",
+    "studio": "remotion studio src/entry.ts"
+  },
+  "dependencies": {
+    "@deken/brand": "workspace:*",
+    "@fontsource-variable/montserrat": "5.3.0",
+    "@remotion/fonts": "4.0.531",
+    "remotion": "4.0.531",
+    "zod": "4.6.5",
+    "@fontsource/ibm-plex-mono": "5.3.0"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@remotion/cli": "4.0.531",
+    "@testing-library/react": "16.3.0",
+    "@types/react": "19.3.0",
+    "jsdom": "30.1.2",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "typescript": "5.9.3",
+    "vitest": "4.1.11",
+    "@types/node": "22.19.3",
+    "esbuild": "0.28.1"
+  }
+}

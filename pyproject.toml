@@ -8,6 +8,7 @@ dependencies = [
     "deken-api",
     "deken-worker",
     "deken-render",
+    "deken-analysis",
 ]
 
 [dependency-groups]
@@ -20,6 +21,7 @@ dev = [
     "moto[s3,server]>=5.1",
     "boto3-stubs[s3]>=1.40",
     "types-requests",
+    "types-jsonschema",
 ]
 
 [tool.uv]
@@ -31,6 +33,7 @@ members = [
     "services/api",
     "workers/runtime",
     "workers/render",
+    "workers/analysis",
 ]
 
 [tool.uv.sources]
@@ -38,6 +41,7 @@ deken-shared = { workspace = true }
 deken-api = { workspace = true }
 deken-worker = { workspace = true }
 deken-render = { workspace = true }
+deken-analysis = { workspace = true }
 
 [tool.ruff]
 line-length = 100
@@ -60,9 +64,11 @@ ignore-names = ["NotAuthenticated", "PermissionDenied", "NotFound", "Conflict", 
 [tool.ruff.lint.per-file-ignores]
 "**/tests/**" = ["S101", "S105", "S106", "S311", "S603", "S607", "PT018", "ASYNC221", "ASYNC240", "ASYNC251"]
 "infra/migrations/**" = ["N999"]
+# Utilidades de prueba (generan ficheros sintéticos con FFmpeg).
+"services/api/src/deken_api/testing.py" = ["S603", "S607", "ASYNC240"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["deken_shared", "deken_api", "deken_worker", "deken_render"]
+known-first-party = ["deken_shared", "deken_api", "deken_worker", "deken_render", "deken_analysis"]
 
 [tool.mypy]
 python_version = "3.12"
@@ -74,11 +80,12 @@ mypy_path = [
     "services/api/src",
     "workers/runtime/src",
     "workers/render/src",
+    "workers/analysis/src",
 ]
 explicit_package_bases = true
 
 [[tool.mypy.overrides]]
-module = ["moto.*", "argon2.*"]
+module = ["moto.*", "argon2.*", "fontTools.*"]
 ignore_missing_imports = true
 
 [tool.pydantic-mypy]
@@ -96,6 +103,7 @@ testpaths = [
     "services/api/tests",
     "workers/runtime/tests",
     "workers/render/tests",
+    "workers/analysis/tests",
 ]
 addopts = "-ra --strict-markers --import-mode=importlib"
 markers = [

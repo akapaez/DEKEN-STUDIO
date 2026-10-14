@@ -28,6 +28,7 @@ from deken_shared.jobs import (
     CompleteRequest,
     ErrorCode,
     FailRequest,
+    JobInput,
     OutputDeclaration,
     OutputUploadRequest,
     ProgressReport,
@@ -50,6 +51,7 @@ from deken_worker.process import (
 log = logging.getLogger("deken_worker")
 
 HANDLER_ENTRY_POINT_GROUP = "deken_worker.handlers"
+ENGINE_ENTRY_POINT_GROUP = "deken_worker.engines"
 
 
 class JobError(Exception):
@@ -134,6 +136,29 @@ class JobContext:
     def keepalive(self) -> None:
         self.report(self._progress, force=True)
 
+    def download_input(self, item: JobInput, *, verify_sha256: bool = True) -> Path:
+        """Descarga una entrada firmada al directorio aislado del trabajo."""
+        ext = item.extension or "bin"
+        target = ensure_within(self.work_dir, Path(f"{item.name}.{ext}"))
+        self.check_cancelled()
+        try:
+            self.client.download(item.url, target)
+        except ApiClientError as exc:
+            raise JobError(ErrorCode.INPUT_UNAVAILABLE, str(exc), retryable=True) from exc
+        if item.size_bytes is not None and target.stat().st_size != item.size_bytes:
+            raise JobError(
+                ErrorCode.INPUT_UNAVAILABLE,
+                f"Tamaño de la entrada '{item.name}' distinto del esperado",
+                retryable=True,
+            )
+        if verify_sha256 and item.sha256 and sha256_file(target) != item.sha256:
+            raise JobError(
+                ErrorCode.INPUT_UNAVAILABLE,
+                f"SHA-256 de la entrada '{item.name}' distinto del registrado",
+                retryable=True,
+            )
+        return target
+
     def upload_output(self, name: str, path: Path, content_type: str) -> OutputDeclaration:
         path = ensure_within(self.work_dir, path)
         self.check_cancelled()
@@ -152,6 +177,15 @@ class JobContext:
 
 
 Handler = Callable[[JobContext], HandlerResult]
+
+
+def load_engines() -> dict[str, str]:
+    """Información de motores (p. ej. Remotion) que declaran los paquetes de handlers."""
+    engines: dict[str, str] = {}
+    for ep in entry_points(group=ENGINE_ENTRY_POINT_GROUP):
+        describe: Callable[[], Mapping[str, str]] = ep.load()
+        engines.update(describe())
+    return engines
 
 
 def load_handlers() -> dict[str, Handler]:
@@ -178,6 +212,7 @@ class Worker:
 
     def heartbeat(self) -> None:
         caps = detect(self.settings.ffmpeg_path, self.settings.ffprobe_path, list(self.handlers))
+        caps = caps.model_copy(update={"engines": load_engines()})
         ack = self.client.heartbeat(
             WorkerHeartbeat(
                 hostname=socket.gethostname()[:255],

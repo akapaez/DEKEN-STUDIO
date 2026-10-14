@@ -9,6 +9,7 @@ import threading
 import uuid
 from collections.abc import Awaitable, Callable, Coroutine
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, TypeVar
 
 import httpx
@@ -120,3 +121,168 @@ def run_alembic(database_url: str, action: str, revision: str | None = None) -> 
     thread.join()
     if errors:
         raise errors[0]
+
+
+# --- Ficheros SINTÉTICOS de prueba (Sprint 1) ---------------------------------------------
+# Todos llevan la etiqueta "SINTÉTICO" en sus metadatos: no son material de DEKEN.
+
+SYNTHETIC_LABEL = "DEKEN STUDIO AI - fichero SINTÉTICO de prueba"
+
+
+def synthetic_video(
+    path: Path,
+    *,
+    width: int = 1080,
+    height: int = 1920,
+    seconds: float = 2.0,
+    audio: bool = True,
+    lossless: bool = False,
+    rotation: int | None = None,
+    fps: int = 30,
+) -> Path:
+    """Genera un vídeo de prueba real (barras + tono) con FFmpeg."""
+    import subprocess
+
+    target = path if rotation is None else path.with_suffix(".tmp.mp4")
+    cmd = [
+        "ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
+        "-f", "lavfi", "-i", f"testsrc2=size={width}x{height}:rate={fps}:duration={seconds}",
+    ]  # fmt: skip
+    if audio:
+        cmd += ["-f", "lavfi", "-i", f"sine=frequency=440:sample_rate=48000:duration={seconds}"]
+    cmd += ["-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p"]
+    cmd += ["-qp", "0"] if lossless else ["-crf", "30"]
+    cmd += ["-c:a", "aac", "-shortest"] if audio else ["-an"]
+    cmd += ["-metadata", f"comment={SYNTHETIC_LABEL}", str(target)]
+    subprocess.run(cmd, check=True, timeout=300)
+    if rotation is not None:
+        subprocess.run(
+            [
+                "ffmpeg",
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-y",
+                "-display_rotation",
+                str(rotation),
+                "-i",
+                str(target),
+                "-c",
+                "copy",
+                str(path),
+            ],
+            check=True,
+            timeout=120,
+        )
+        target.unlink()
+    return path
+
+
+def synthetic_logo(
+    path: Path, *, width: int, height: int, inks: list[tuple[str, float]], alpha: bool = True
+) -> Path:
+    """Logo de prueba: franjas de tinta plana sobre fondo transparente."""
+    from PIL import Image, ImageDraw
+
+    image = Image.new(
+        "RGBA" if alpha else "RGB", (width, height), (0, 0, 0, 0) if alpha else (255, 255, 255)
+    )
+    draw = ImageDraw.Draw(image)
+    x = 0
+    for color, share in inks:
+        w = round(width * share)
+        draw.rectangle([x, height // 5, x + w - 1, height - height // 5], fill=color)
+        x += w
+    image.save(path)
+    return path
+
+
+def synthetic_font(path: Path, *, family: str = "Sintetica Prueba", weight: int = 900) -> Path:
+    """Tipografía TTF mínima generada con fontTools (solo para pruebas)."""
+    from fontTools.fontBuilder import FontBuilder
+    from fontTools.pens.ttGlyphPen import TTGlyphPen
+
+    fb = FontBuilder(1000, isTTF=True)
+    fb.setupGlyphOrder([".notdef", "A"])
+    fb.setupCharacterMap({ord("A"): "A"})
+    pen = TTGlyphPen(None)
+    pen.moveTo((100, 0))
+    pen.lineTo((500, 700))
+    pen.lineTo((900, 0))
+    pen.closePath()
+    glyph = pen.glyph()
+    fb.setupGlyf({".notdef": glyph, "A": glyph})
+    fb.setupHorizontalMetrics({".notdef": (1000, 100), "A": (1000, 100)})
+    fb.setupHorizontalHeader(ascent=800, descent=-200)
+    fb.setupNameTable({"familyName": family, "styleName": "Black"})
+    fb.setupOS2(usWeightClass=weight)
+    fb.setupPost()
+    fb.save(str(path))
+    return path
+
+
+async def upload_media(
+    client: httpx.AsyncClient,
+    path: Path,
+    *,
+    filename: str | None = None,
+    title: str | None = None,
+    skip_parts: set[int] | None = None,
+) -> httpx.Response:
+    """Recorrido completo de subida multiparte como lo hace el navegador."""
+    size = path.stat().st_size
+    start = await client.post(
+        "/api/v1/media/uploads",
+        json={"filename": filename or path.name, "size_bytes": size, "title": title},
+    )
+    if start.status_code != 201:
+        return start
+    plan = start.json()
+    asset_id, part_size, count = plan["asset_id"], plan["part_size_bytes"], plan["part_count"]
+    numbers = [n for n in range(1, count + 1) if n not in (skip_parts or set())]
+    urls: dict[int, str] = {}
+    for i in range(0, len(numbers), plan["max_parts_per_request"]):
+        resp = await client.post(
+            f"/api/v1/media/uploads/{asset_id}/parts",
+            json={"part_numbers": numbers[i : i + plan["max_parts_per_request"]]},
+        )
+        resp.raise_for_status()
+        urls.update({p["part_number"]: p["url"] for p in resp.json()})
+    async with httpx.AsyncClient(timeout=120) as storage:
+        with path.open("rb") as fh:
+            for n in range(1, count + 1):
+                chunk = fh.read(part_size)
+                if n in urls:
+                    put = await storage.put(urls[n], content=chunk)
+                    put.raise_for_status()
+    return await client.post(f"/api/v1/media/uploads/{asset_id}/complete")
+
+
+async def upload_brand(
+    client: httpx.AsyncClient,
+    path: Path,
+    *,
+    kind: str = "logo",
+    name: str | None = None,
+    filename: str | None = None,
+    **extra: Any,
+) -> httpx.Response:
+    """Subida de un recurso de marca (PUT firmado directo al almacenamiento)."""
+    data = path.read_bytes()
+    start = await client.post(
+        "/api/v1/brand/uploads",
+        json={
+            "kind": kind,
+            "name": name or path.stem,
+            "filename": filename or path.name,
+            "size_bytes": len(data),
+            **extra,
+        },
+    )
+    if start.status_code != 201:
+        return start
+    plan = start.json()
+    async with httpx.AsyncClient(timeout=60) as storage:
+        put = await storage.put(plan["upload_url"], content=data, headers=plan["headers"])
+        put.raise_for_status()
+    return await client.post(f"/api/v1/brand/uploads/{plan['asset_id']}/complete")

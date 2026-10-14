@@ -12,7 +12,7 @@ import os
 from enum import StrEnum
 from functools import lru_cache
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
@@ -96,6 +96,15 @@ class Settings(BaseSettings):
 
     # Límite de cuerpo de peticiones JSON (las subidas van directas a S3).
     max_request_body_bytes: int = Field(default=1024 * 1024, ge=1024)
+
+    # Biblioteca audiovisual (Sprint 1).
+    media_max_upload_bytes: int = Field(default=20 * 1024**3, ge=1024 * 1024)
+    media_part_size_bytes: int = Field(default=16 * 1024**2, ge=5 * 1024**2, le=5 * 1024**3)
+    media_parts_per_request: int = Field(default=50, ge=1, le=1000)
+    brand_max_upload_bytes: int = Field(default=50 * 1024**2, ge=1024)
+
+    # Remotion: sin licencia de empresa verificada solo se permiten renders de evaluación.
+    remotion_license_mode: Literal["evaluation", "company"] = "evaluation"
 
     # IA (Sprint 2). En Sprint 0 solo se informa de si está configurada.
     ai_provider: str | None = None

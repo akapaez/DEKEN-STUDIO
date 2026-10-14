@@ -89,6 +89,109 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/brand/assets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Brand Assets */
+        get: operations["list_brand_assets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/brand/assets/{asset_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Brand Asset */
+        get: operations["get_brand_asset"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Brand Asset */
+        patch: operations["update_brand_asset"];
+        trace?: never;
+    };
+    "/api/v1/brand/assets/{asset_id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Archive Brand Asset */
+        post: operations["archive_brand_asset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/brand/assets/{asset_id}/download-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Brand Download Url */
+        get: operations["brand_download_url"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/brand/uploads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start Brand Upload */
+        post: operations["start_brand_upload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/brand/uploads/{asset_id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Complete Brand Upload */
+        post: operations["complete_brand_upload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/files/{object_id}/download-url": {
         parameters: {
             query?: never;
@@ -211,6 +314,248 @@ export interface paths {
         put?: never;
         /** Retry Job */
         post: operations["retry_job"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/media/assets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Media Assets */
+        get: operations["list_media_assets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/media/assets/{asset_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Media Asset */
+        get: operations["get_media_asset"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Media Asset */
+        patch: operations["update_media_asset"];
+        trace?: never;
+    };
+    "/api/v1/media/assets/{asset_id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Archive Media Asset */
+        post: operations["archive_media_asset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/media/assets/{asset_id}/original-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Media Original Url */
+        get: operations["media_original_url"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/media/assets/{asset_id}/rights": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update Media Rights */
+        put: operations["update_media_rights"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/media/assets/{asset_id}/waveform": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Media Waveform */
+        get: operations["media_waveform"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/media/tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Media Tags */
+        get: operations["list_media_tags"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/media/uploads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start Media Upload */
+        post: operations["start_media_upload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/media/uploads/{asset_id}/abort": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Abort Media Upload */
+        post: operations["abort_media_upload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/media/uploads/{asset_id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Complete Media Upload */
+        post: operations["complete_media_upload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/media/uploads/{asset_id}/parts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Media Upload Parts */
+        post: operations["media_upload_parts"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/renders/engine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Render Engine */
+        get: operations["render_engine"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/renders/evaluation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Evaluation Render
+         * @description Encola la composición de evaluación técnica (5 s, 1080×1920, 30 fps).
+         */
+        post: operations["create_evaluation_render"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/renders/timeline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Timeline Render */
+        post: operations["create_timeline_render"];
         delete?: never;
         options?: never;
         head?: never;
@@ -527,6 +872,119 @@ export interface components {
             /** Next Before */
             next_before: number | null;
         };
+        /** BrandAssetOut */
+        BrandAssetOut: {
+            /** Analysis */
+            analysis: {
+                [key: string]: unknown;
+            } | null;
+            /** Aspect Ratio */
+            aspect_ratio: number | null;
+            /** Color Mismatch */
+            color_mismatch: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Declared Color */
+            declared_color: string | null;
+            /** Family */
+            family: string | null;
+            /** Font Family */
+            font_family: string | null;
+            /** Font Style */
+            font_style: string | null;
+            /** Font Weight */
+            font_weight: number | null;
+            /** Has Alpha */
+            has_alpha: boolean | null;
+            /** Height */
+            height: number | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "logo" | "font" | "image";
+            /** License Ref */
+            license_ref: string | null;
+            /** Measured Color Hex */
+            measured_color_hex: string | null;
+            /** Measured Color Name */
+            measured_color_name: string | null;
+            /** Name */
+            name: string;
+            /** Notes */
+            notes: string | null;
+            /** Original Filename */
+            original_filename: string;
+            /** Preview Url */
+            preview_url: string | null;
+            /** Recommended Background */
+            recommended_background: ("dark" | "light" | "any") | null;
+            /** Status */
+            status: string;
+            /** Status Reason */
+            status_reason: string | null;
+            /** Usage Background */
+            usage_background: ("dark" | "light" | "any") | null;
+            /** Width */
+            width: number | null;
+        };
+        /** BrandUpdateRequest */
+        BrandUpdateRequest: {
+            /** Declared Color */
+            declared_color?: string | null;
+            /** Family */
+            family?: string | null;
+            /** License Ref */
+            license_ref?: string | null;
+            /** Name */
+            name?: string | null;
+            /** Notes */
+            notes?: string | null;
+            /** Usage Background */
+            usage_background?: ("dark" | "light" | "any") | null;
+        };
+        /** BrandUploadOut */
+        BrandUploadOut: {
+            /**
+             * Asset Id
+             * Format: uuid
+             */
+            asset_id: string;
+            /** Headers */
+            headers: {
+                [key: string]: string;
+            };
+            /** Upload Url */
+            upload_url: string;
+        };
+        /** BrandUploadRequest */
+        BrandUploadRequest: {
+            /** Declared Color */
+            declared_color?: string | null;
+            /** Family */
+            family?: string | null;
+            /** Filename */
+            filename: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "logo" | "font" | "image";
+            /** License Ref */
+            license_ref?: string | null;
+            /** Name */
+            name: string;
+            /** Size Bytes */
+            size_bytes: number;
+        };
         /** CheckOut */
         CheckOut: {
             /** Bucket */
@@ -684,11 +1142,23 @@ export interface components {
         JobInput: {
             /** Content Type */
             content_type: string;
+            /** Duration S */
+            duration_s?: number | null;
             /**
              * Expires At
              * Format: date-time
              */
             expires_at: string;
+            /** Extension */
+            extension?: string | null;
+            /** Has Audio */
+            has_audio?: boolean | null;
+            /** Height */
+            height?: number | null;
+            /** Key */
+            key?: string | null;
+            /** Kind */
+            kind?: string | null;
             /** Name */
             name: string;
             /**
@@ -702,6 +1172,8 @@ export interface components {
             size_bytes: number | null;
             /** Url */
             url: string;
+            /** Width */
+            width?: number | null;
         };
         /** JobListOut */
         JobListOut: {
@@ -824,6 +1296,256 @@ export interface components {
             /** Password */
             password: string;
         };
+        /** MediaAssetDetailOut */
+        MediaAssetDetailOut: {
+            /** Archived At */
+            archived_at: string | null;
+            /** Audio Codec */
+            audio_codec: string | null;
+            /** Consent Reference */
+            consent_reference: string | null;
+            /**
+             * Consent Status
+             * @enum {string}
+             */
+            consent_status: "not_required" | "pending" | "granted" | "denied";
+            /** Container */
+            container: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Declared Size Bytes */
+            declared_size_bytes: number;
+            /** Derivatives */
+            derivatives: {
+                [key: string]: components["schemas"]["StoredObjectOut"];
+            };
+            /** Description */
+            description: string | null;
+            /** Duplicate Of Id */
+            duplicate_of_id: string | null;
+            /** Duration S */
+            duration_s: number | null;
+            /** Fps */
+            fps: number | null;
+            /** Has Audio */
+            has_audio: boolean | null;
+            /** Has Waveform */
+            has_waveform: boolean;
+            /** Height */
+            height: number | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Ingest Job Id */
+            ingest_job_id: string | null;
+            /** Location */
+            location: string | null;
+            /** Orientation */
+            orientation: string | null;
+            /** Original Filename */
+            original_filename: string;
+            original_object: components["schemas"]["StoredObjectOut"] | null;
+            /**
+             * People Present
+             * @enum {string}
+             */
+            people_present: "yes" | "no" | "unknown";
+            /** Poster Url */
+            poster_url: string | null;
+            /** Probe */
+            probe: {
+                [key: string]: unknown;
+            } | null;
+            /** Proxy Url */
+            proxy_url: string | null;
+            /** Recorded At */
+            recorded_at: string | null;
+            /** Rights Owner */
+            rights_owner: string;
+            /** Rights Updated At */
+            rights_updated_at: string | null;
+            /** Rotation */
+            rotation: number | null;
+            /** Sha256 */
+            sha256: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "uploading" | "processing" | "ready" | "rejected" | "failed" | "duplicate" | "cancelled";
+            /** Status Reason */
+            status_reason: string | null;
+            /** Strip Frames */
+            strip_frames: number | null;
+            /** Strip Url */
+            strip_url: string | null;
+            /** Tags */
+            tags: string[];
+            /** Title */
+            title: string;
+            /** Usable For Production */
+            usable_for_production: boolean;
+            /** Usage Restrictions */
+            usage_restrictions: string | null;
+            /** Video Codec */
+            video_codec: string | null;
+            /** Width */
+            width: number | null;
+        };
+        /** MediaAssetOut */
+        MediaAssetOut: {
+            /** Archived At */
+            archived_at: string | null;
+            /** Audio Codec */
+            audio_codec: string | null;
+            /** Consent Reference */
+            consent_reference: string | null;
+            /**
+             * Consent Status
+             * @enum {string}
+             */
+            consent_status: "not_required" | "pending" | "granted" | "denied";
+            /** Container */
+            container: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Declared Size Bytes */
+            declared_size_bytes: number;
+            /** Description */
+            description: string | null;
+            /** Duplicate Of Id */
+            duplicate_of_id: string | null;
+            /** Duration S */
+            duration_s: number | null;
+            /** Fps */
+            fps: number | null;
+            /** Has Audio */
+            has_audio: boolean | null;
+            /** Height */
+            height: number | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Ingest Job Id */
+            ingest_job_id: string | null;
+            /** Location */
+            location: string | null;
+            /** Orientation */
+            orientation: string | null;
+            /** Original Filename */
+            original_filename: string;
+            /**
+             * People Present
+             * @enum {string}
+             */
+            people_present: "yes" | "no" | "unknown";
+            /** Poster Url */
+            poster_url: string | null;
+            /** Recorded At */
+            recorded_at: string | null;
+            /** Rights Owner */
+            rights_owner: string;
+            /** Rights Updated At */
+            rights_updated_at: string | null;
+            /** Rotation */
+            rotation: number | null;
+            /** Sha256 */
+            sha256: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "uploading" | "processing" | "ready" | "rejected" | "failed" | "duplicate" | "cancelled";
+            /** Status Reason */
+            status_reason: string | null;
+            /** Strip Frames */
+            strip_frames: number | null;
+            /** Strip Url */
+            strip_url: string | null;
+            /** Tags */
+            tags: string[];
+            /** Title */
+            title: string;
+            /** Usable For Production */
+            usable_for_production: boolean;
+            /** Usage Restrictions */
+            usage_restrictions: string | null;
+            /** Video Codec */
+            video_codec: string | null;
+            /** Width */
+            width: number | null;
+        };
+        /** MediaListOut */
+        MediaListOut: {
+            /** Items */
+            items: components["schemas"]["MediaAssetOut"][];
+            /** Total */
+            total: number;
+        };
+        /** MediaRightsRequest */
+        MediaRightsRequest: {
+            /** Consent Reference */
+            consent_reference?: string | null;
+            /** Consent Status */
+            consent_status?: ("not_required" | "pending" | "granted" | "denied") | null;
+            /** People Present */
+            people_present?: ("yes" | "no" | "unknown") | null;
+            /** Rights Owner */
+            rights_owner?: string | null;
+            /** Usage Restrictions */
+            usage_restrictions?: string | null;
+        };
+        /** MediaUpdateRequest */
+        MediaUpdateRequest: {
+            /** Description */
+            description?: string | null;
+            /** Location */
+            location?: string | null;
+            /** Recorded At */
+            recorded_at?: string | null;
+            /** Tags */
+            tags?: string[] | null;
+            /** Title */
+            title?: string | null;
+        };
+        /** MediaUploadOut */
+        MediaUploadOut: {
+            /**
+             * Asset Id
+             * Format: uuid
+             */
+            asset_id: string;
+            /** Max Parts Per Request */
+            max_parts_per_request: number;
+            /** Part Count */
+            part_count: number;
+            /** Part Size Bytes */
+            part_size_bytes: number;
+        };
+        /** MediaUploadRequest */
+        MediaUploadRequest: {
+            /**
+             * Content Type
+             * @default
+             */
+            content_type: string;
+            /** Filename */
+            filename: string;
+            /** Size Bytes */
+            size_bytes: number;
+            /** Title */
+            title?: string | null;
+        };
         /** MeOut */
         MeOut: {
             /** Csrf Token */
@@ -884,6 +1606,18 @@ export interface components {
             /** Upload Url */
             upload_url: string;
         };
+        /** PartUrlOut */
+        PartUrlOut: {
+            /** Part Number */
+            part_number: number;
+            /** Url */
+            url: string;
+        };
+        /** PartUrlsRequest */
+        PartUrlsRequest: {
+            /** Part Numbers */
+            part_numbers: number[];
+        };
         /** PasswordChangeRequest */
         PasswordChangeRequest: {
             /** Current Password */
@@ -895,7 +1629,7 @@ export interface components {
          * Permission
          * @enum {string}
          */
-        Permission: "system:read" | "system:manage" | "users:manage" | "workers:manage" | "audit:read" | "jobs:read" | "jobs:manage" | "files:read";
+        Permission: "system:read" | "system:manage" | "users:manage" | "workers:manage" | "audit:read" | "jobs:read" | "jobs:manage" | "files:read" | "media:read" | "media:write" | "media:rights" | "brand:read" | "brand:manage" | "render:create";
         /** ProgressReport */
         ProgressReport: {
             /** Message */
@@ -908,6 +1642,48 @@ export interface components {
          * @enum {string}
          */
         Queue: "render" | "analysis";
+        /** RemotionEvalRequest */
+        RemotionEvalRequest: {
+            /**
+             * Subtitle
+             * @default Motor de composición
+             */
+            subtitle: string;
+            /**
+             * Title
+             * @default DEKEN STUDIO AI
+             */
+            title: string;
+        };
+        /** RemotionStatus */
+        RemotionStatus: {
+            /** Commercial Renders Enabled */
+            commercial_renders_enabled: boolean;
+            /**
+             * License Mode
+             * @enum {string}
+             */
+            license_mode: "evaluation" | "company";
+        };
+        /** RenderEngineOut */
+        RenderEngineOut: {
+            /** Commercial Renders Enabled */
+            commercial_renders_enabled: boolean;
+            /**
+             * Engine
+             * @constant
+             */
+            engine: "remotion";
+            /**
+             * License Mode
+             * @enum {string}
+             */
+            license_mode: "evaluation" | "company";
+            /** Note */
+            note: string;
+            /** Workers With Remotion */
+            workers_with_remotion: string[];
+        };
         /**
          * Role
          * @enum {string}
@@ -969,6 +1745,7 @@ export interface components {
             environment: string;
             ffprobe: components["schemas"]["FfprobeStatus"];
             jobs: components["schemas"]["JobsStatus"];
+            remotion: components["schemas"]["RemotionStatus"];
             /**
              * Server Time
              * Format: date-time
@@ -982,6 +1759,28 @@ export interface components {
             /** Version */
             version: string;
             workers: components["schemas"]["WorkersStatus"];
+        };
+        /** TagCountOut */
+        TagCountOut: {
+            /** Count */
+            count: number;
+            /** Tag */
+            tag: string;
+        };
+        /** TimelineRenderRequest */
+        TimelineRenderRequest: {
+            /**
+             * Purpose
+             * @default evaluation
+             * @enum {string}
+             */
+            purpose: "evaluation" | "production";
+            /** Timeline */
+            timeline: {
+                [key: string]: unknown;
+            };
+            /** Title */
+            title?: string | null;
         };
         /** UserCreateRequest */
         UserCreateRequest: {
@@ -1041,10 +1840,23 @@ export interface components {
             /** Error Type */
             type: string;
         };
+        /** WaveformOut */
+        WaveformOut: {
+            /** Duration S */
+            duration_s: number;
+            /** Peaks */
+            peaks: number[];
+            /** Version */
+            version: number;
+        };
         /** WorkerCapabilities */
         WorkerCapabilities: {
             /** Encoders */
             encoders?: string[];
+            /** Engines */
+            engines?: {
+                [key: string]: string;
+            };
             /** Ffmpeg Version */
             ffmpeg_version?: string | null;
             /** Ffprobe Version */
@@ -1301,6 +2113,229 @@ export interface operations {
             };
         };
     };
+    list_brand_assets: {
+        parameters: {
+            query?: {
+                kind?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BrandAssetOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_brand_asset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                asset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BrandAssetOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_brand_asset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                asset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BrandUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BrandAssetOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    archive_brand_asset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                asset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BrandAssetOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    brand_download_url: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                asset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DownloadUrlOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_brand_upload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BrandUploadRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BrandUploadOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    complete_brand_upload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                asset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BrandAssetOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     download_url: {
         parameters: {
             query?: never;
@@ -1490,6 +2525,475 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_media_assets: {
+        parameters: {
+            query?: {
+                consent?: ("not_required" | "pending" | "granted" | "denied") | null;
+                has_audio?: boolean | null;
+                include_archived?: boolean;
+                limit?: number;
+                offset?: number;
+                orientation?: ("vertical" | "horizontal" | "square") | null;
+                q?: string | null;
+                status?: string | null;
+                tag?: string[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaListOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_media_asset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                asset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaAssetDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_media_asset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                asset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MediaUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaAssetDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    archive_media_asset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                asset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaAssetDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    media_original_url: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                asset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DownloadUrlOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_media_rights: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                asset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MediaRightsRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaAssetDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    media_waveform: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                asset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WaveformOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_media_tags: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TagCountOut"][];
+                };
+            };
+        };
+    };
+    start_media_upload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MediaUploadRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaUploadOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    abort_media_upload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                asset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaAssetOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    complete_media_upload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                asset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaAssetDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    media_upload_parts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                asset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PartUrlsRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PartUrlOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    render_engine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RenderEngineOut"];
+                };
+            };
+        };
+    };
+    create_evaluation_render: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RemotionEvalRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_timeline_render: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TimelineRenderRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
