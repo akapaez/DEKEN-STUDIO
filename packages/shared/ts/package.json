@@ -1,0 +1,19 @@
+{
+  "name": "@deken/shared",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Tipos de la API v1 generados desde OpenAPI y constantes compartidas",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "generate": "node ./scripts/generate.mjs",
+    "check-generated": "node ./scripts/generate.mjs --check",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "openapi-typescript": "7.13.0",
+    "typescript": "5.9.3"
+  }
+}

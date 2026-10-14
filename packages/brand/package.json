@@ -1,0 +1,19 @@
+{
+  "name": "@deken/brand",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Tokens y reglas de la identidad visual de Grupo Deken",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./tokens.css": "./src/tokens.css"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3",
+    "vitest": "4.1.11"
+  }
+}

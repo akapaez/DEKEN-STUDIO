@@ -1,0 +1,104 @@
+[project]
+name = "deken-studio"
+version = "0.1.0"
+description = "DEKEN STUDIO AI — workspace raíz (Python)"
+requires-python = ">=3.12"
+dependencies = [
+    "deken-shared",
+    "deken-api",
+    "deken-worker",
+    "deken-render",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0",
+    "pytest-asyncio>=1.0",
+    "pytest-timeout>=2.3",
+    "ruff>=0.15",
+    "mypy>=1.18",
+    "moto[s3,server]>=5.1",
+    "boto3-stubs[s3]>=1.40",
+    "types-requests",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = [
+    "packages/shared/python",
+    "services/api",
+    "workers/runtime",
+    "workers/render",
+]
+
+[tool.uv.sources]
+deken-shared = { workspace = true }
+deken-api = { workspace = true }
+deken-worker = { workspace = true }
+deken-render = { workspace = true }
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["apps", "node_modules"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "S", "A", "C4", "RUF", "ASYNC", "PT", "SIM"]
+ignore = [
+    "RUF001", "RUF002", "RUF003", # texto en español con caracteres no ASCII
+]
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "deken_api.deps.require"]
+
+[tool.ruff.lint.pep8-naming]
+# Excepciones de dominio con nombres descriptivos (NotFound, Conflict...).
+ignore-names = ["NotAuthenticated", "PermissionDenied", "NotFound", "Conflict", "RateLimited", "ServiceUnavailable", "InvalidCredentials", "_BodyTooLarge"]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = ["S101", "S105", "S106", "S311", "S603", "S607", "PT018", "ASYNC221", "ASYNC240", "ASYNC251"]
+"infra/migrations/**" = ["N999"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["deken_shared", "deken_api", "deken_worker", "deken_render"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unreachable = true
+plugins = ["pydantic.mypy"]
+mypy_path = [
+    "packages/shared/python/src",
+    "services/api/src",
+    "workers/runtime/src",
+    "workers/render/src",
+]
+explicit_package_bases = true
+
+[[tool.mypy.overrides]]
+module = ["moto.*", "argon2.*"]
+ignore_missing_imports = true
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+timeout = 300
+testpaths = [
+    "packages/shared/python/tests",
+    "services/api/tests",
+    "workers/runtime/tests",
+    "workers/render/tests",
+]
+addopts = "-ra --strict-markers --import-mode=importlib"
+markers = [
+    "integration: requiere PostgreSQL, Redis y almacenamiento S3",
+    "media: requiere FFmpeg/ffprobe reales",
+]

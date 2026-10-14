@@ -1,0 +1,33 @@
+[project]
+name = "deken-api"
+version = "0.1.0"
+description = "API v1 de DEKEN STUDIO AI"
+requires-python = ">=3.12"
+dependencies = [
+    "deken-shared",
+    "fastapi>=0.120",
+    "uvicorn[standard]>=0.34",
+    "pydantic>=2.11",
+    "pydantic-settings>=2.10",
+    "sqlalchemy[asyncio]>=2.0.40",
+    "asyncpg>=0.30",
+    "alembic>=1.16",
+    "argon2-cffi>=25.1",
+    "redis>=6.0",
+    "boto3>=1.40",
+    "structlog>=25.1",
+    "httpx>=0.28",
+]
+
+[project.scripts]
+deken-api = "deken_api.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.8,<0.12"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "deken_api"
+
+[tool.uv.sources]
+deken-shared = { workspace = true }

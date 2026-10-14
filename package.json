@@ -1,0 +1,17 @@
+{
+  "name": "deken-studio",
+  "private": true,
+  "version": "0.1.0",
+  "description": "DEKEN STUDIO AI — workspace raíz (JS/TS)",
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "generate:api": "pnpm --filter @deken/shared generate",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test",
+    "build": "pnpm -r build"
+  }
+}

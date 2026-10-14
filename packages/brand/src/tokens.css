@@ -1,0 +1,77 @@
+/*
+ * Tokens de diseño de DEKEN STUDIO AI.
+ * Valores de marca en ./palette.ts (fuente única documentada).
+ * Tema oscuro = nativo de la marca. Tema claro = mismos neutros con luminosidad invertida.
+ * Cambiar de tema: atributo data-theme="light|dark" en <html>; sin atributo, sigue al sistema.
+ */
+
+:root {
+  --deken-green: #76b82a;
+  --deken-gray: #383e42;
+  --on-green: #0d0e0f;
+
+  --font-brand: "Montserrat Variable", Montserrat, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --tracking-heading: -0.02em;
+  --tracking-label: 0.16em;
+
+  --radius-s: 4px;
+  --radius-m: 8px;
+  --radius-l: 12px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --ease-arrive: cubic-bezier(0.16, 1, 0.3, 1);
+
+  color-scheme: light;
+  --bg: #f5f6f7;
+  --surface: #ffffff;
+  --surface-raised: #eceeef;
+  --border: #ced3d6;
+  --text: #0d0e0f;
+  --text-secondary: #383e42;
+  --label: #59636a;
+  --accent: var(--deken-green);
+  --on-accent: var(--on-green);
+  --focus: #0d0e0f;
+  --danger: #b42318;
+  --warning: #8a5a00;
+  --shadow: 0 1px 2px rgb(13 14 15 / 0.06), 0 4px 16px rgb(13 14 15 / 0.06);
+}
+
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0d0e0f;
+  --surface: #16191a;
+  --surface-raised: #1a1d1e;
+  --border: #383e42;
+  --text: #ffffff;
+  --text-secondary: #a1aaaf;
+  --label: #7b878f;
+  --focus: var(--deken-green);
+  --danger: #ff6b6b;
+  --warning: #f5b841;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.35);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0d0e0f;
+    --surface: #16191a;
+    --surface-raised: #1a1d1e;
+    --border: #383e42;
+    --text: #ffffff;
+    --text-secondary: #a1aaaf;
+    --label: #7b878f;
+    --focus: var(--deken-green);
+    --danger: #ff6b6b;
+    --warning: #f5b841;
+    --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.35);
+  }
+}

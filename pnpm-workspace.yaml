@@ -1,0 +1,7 @@
+packages:
+  - "apps/*"
+  - "packages/brand"
+  - "packages/shared/ts"
+onlyBuiltDependencies:
+  - sharp
+  - unrs-resolver

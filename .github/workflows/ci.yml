@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "claude/**"]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Lint, tipos y unitarios
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.x"
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: uv sync --frozen
+      - run: pnpm install --frozen-lockfile
+      - name: Ruff
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+      - name: mypy (estricto)
+        run: uv run mypy packages/shared/python/src services/api/src workers/runtime/src workers/render/src
+      - name: OpenAPI y tipos TS al día
+        run: pnpm --filter @deken/shared check-generated
+      - name: TypeScript (estricto) y ESLint
+        run: |
+          pnpm -r typecheck
+          pnpm --filter @deken/web lint
+      - name: Tests unitarios web y marca
+        run: pnpm -r test
+
+  integration:
+    name: Integración, render real y E2E
+    runs-on: ubuntu-24.04
+    needs: quality
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.x"
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: FFmpeg y cliente PostgreSQL
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg postgresql-client
+      - run: uv sync --frozen
+      - run: pnpm install --frozen-lockfile
+      - name: Servicios (PostgreSQL, Valkey, SeaweedFS)
+        run: make services-up
+      - name: Migraciones
+        run: make migrate
+      - name: Tests Python (integración + render real)
+        run: make test-py
+      - name: Build web y comprobación de secretos
+        run: make check-secrets
+      - name: E2E (Playwright)
+        run: |
+          pnpm --filter @deken/web exec playwright install --with-deps chromium
+          E2E_LOG_DIR=${{ runner.temp }}/e2e-logs infra/scripts/e2e.sh
+      - name: Copia de seguridad
+        run: infra/scripts/backup.sh ${{ runner.temp }}/backups
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-report
+          path: |
+            apps/web/playwright-report
+            apps/web/test-results
+            ${{ runner.temp }}/e2e-logs
+          retention-days: 7
+
+  images:
+    name: Imágenes Docker
+    runs-on: ubuntu-24.04
+    needs: quality
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - run: docker build -f infra/docker/api.Dockerfile -t deken/api:ci .
+      - run: docker build -f infra/docker/worker.Dockerfile -t deken/worker:ci .
+      - run: docker build -f infra/docker/web.Dockerfile -t deken/web:ci .

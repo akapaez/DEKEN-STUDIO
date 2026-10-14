@@ -1,0 +1,133 @@
+# DEKEN STUDIO AI — servicios de desarrollo y despliegue V1.
+#
+#   cp infra/.env.example infra/.env        # y edita los secretos
+#   docker compose -f infra/docker-compose.yml up -d                 # solo infraestructura
+#   docker compose -f infra/docker-compose.yml --profile app up -d   # + API y web
+#   docker compose -f infra/docker-compose.yml --profile worker up -d  # + worker en contenedor
+#
+# Los puertos se publican solo en 127.0.0.1. En un servidor, delante va un proxy TLS.
+name: deken-studio
+
+x-healthcheck: &healthcheck
+  interval: 5s
+  timeout: 5s
+  retries: 30
+  start_period: 5s
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?define POSTGRES_USER en infra/.env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?define POSTGRES_PASSWORD en infra/.env}
+      POSTGRES_DB: ${POSTGRES_DB:-deken}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+
+  redis:
+    # Valkey (BSD-3) es compatible con el protocolo de Redis. Ver docs/ENVIRONMENT_REVIEW.md §4.
+    image: valkey/valkey:8-alpine
+    restart: unless-stopped
+    command: ["valkey-server", "--requirepass", "${REDIS_PASSWORD:?define REDIS_PASSWORD}", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD-SHELL", "valkey-cli -a \"$${REDIS_PASSWORD}\" --no-auth-warning ping | grep -q PONG"]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+
+  seaweedfs:
+    # Almacenamiento compatible S3 (Apache-2.0). Fijar digest en producción.
+    image: chrislusf/seaweedfs:latest
+    restart: unless-stopped
+    environment:
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:?define S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:?define S3_SECRET_KEY}
+      S3_ALLOWED_ORIGINS: ${S3_ALLOWED_ORIGINS:-http://localhost:3000}
+      # Cada bucket es una "colección" con volúmenes propios; los volúmenes no se
+      # prealocan, así que un máximo alto no reserva disco.
+      SEAWEEDFS_VOLUME_MAX: ${SEAWEEDFS_VOLUME_MAX:-200}
+      SEAWEEDFS_VOLUME_SIZE_MB: ${SEAWEEDFS_VOLUME_SIZE_MB:-1024}
+    entrypoint: ["/bin/sh", "/etc/seaweedfs/entrypoint.sh"]
+    volumes:
+      - seaweeddata:/data
+      - ./seaweedfs/entrypoint.sh:/etc/seaweedfs/entrypoint.sh:ro
+    ports:
+      - "127.0.0.1:${S3_PORT:-8333}:8333"
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9333/cluster/status >/dev/null && nc -z 127.0.0.1 8333"]
+
+  api:
+    profiles: ["app"]
+    image: deken/api:${DEKEN_IMAGE_TAG:-dev}
+    build:
+      context: ..
+      dockerfile: infra/docker/api.Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      seaweedfs: { condition: service_healthy }
+    environment:
+      DEKEN_ENVIRONMENT: ${DEKEN_ENVIRONMENT:-development}
+      DEKEN_SECRET_KEY: ${DEKEN_SECRET_KEY:?define DEKEN_SECRET_KEY}
+      DEKEN_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-deken}
+      DEKEN_REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      DEKEN_S3_ENDPOINT_URL: http://seaweedfs:8333
+      DEKEN_S3_PUBLIC_ENDPOINT_URL: ${S3_PUBLIC_ENDPOINT_URL:-http://localhost:8333}
+      DEKEN_S3_WORKER_ENDPOINT_URL: ${S3_WORKER_ENDPOINT_URL:-http://seaweedfs:8333}
+      DEKEN_S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      DEKEN_S3_SECRET_KEY: ${S3_SECRET_KEY}
+      DEKEN_S3_BUCKET: ${S3_BUCKET:-deken-studio}
+      DEKEN_ALLOWED_ORIGINS: ${DEKEN_ALLOWED_ORIGINS:-http://localhost:3000}
+      DEKEN_AI_PROVIDER: ${DEKEN_AI_PROVIDER:-}
+      DEKEN_AI_API_KEY: ${DEKEN_AI_API_KEY:-}
+      DEKEN_AI_MODEL: ${DEKEN_AI_MODEL:-}
+    ports:
+      - "127.0.0.1:${API_PORT:-8000}:8000"
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health/live').status==200 else 1)"]
+
+  web:
+    profiles: ["app"]
+    image: deken/web:${DEKEN_IMAGE_TAG:-dev}
+    build:
+      context: ..
+      dockerfile: infra/docker/web.Dockerfile
+    restart: unless-stopped
+    depends_on:
+      api: { condition: service_healthy }
+    environment:
+      DEKEN_API_INTERNAL_URL: http://api:8000
+      DEKEN_MEDIA_ORIGINS: ${S3_PUBLIC_ENDPOINT_URL:-http://localhost:8333}
+    ports:
+      - "127.0.0.1:${WEB_PORT:-3000}:3000"
+
+  worker:
+    profiles: ["worker"]
+    image: deken/worker:${DEKEN_IMAGE_TAG:-dev}
+    build:
+      context: ..
+      dockerfile: infra/docker/worker.Dockerfile
+    restart: unless-stopped
+    environment:
+      DEKEN_API_URL: ${WORKER_API_URL:-http://api:8000}
+      DEKEN_WORKER_TOKEN: ${DEKEN_WORKER_TOKEN:-}
+      DEKEN_WORKER_QUEUES: render,analysis
+    # Sin puertos publicados: el worker solo abre conexiones salientes.
+
+volumes:
+  pgdata:
+  redisdata:
+  seaweeddata:
