@@ -146,7 +146,9 @@ Incidencias detectadas y corregidas por las propias pruebas:
 ## 6. Endurecimiento posterior (preparación para material real)
 
 Antes de la aceptación con material de DEKEN se probaron con equivalentes sintéticos los
-casos reales de más riesgo. Hallazgos y correcciones:
+casos reales de más riesgo (en verde también en GitHub Actions:
+[CI run #6](https://github.com/akapaez/DEKEN-STUDIO/actions/runs/38682678105)). Hallazgos
+y correcciones:
 
 | Caso | Hallazgo | Corrección y evidencia |
 |---|---|---|
