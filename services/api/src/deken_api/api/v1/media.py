@@ -28,7 +28,12 @@ from deken_api.db.models import MediaAsset, StoredObject
 from deken_api.deps import Ctx, Db, Principal, require
 from deken_api.errors import NotFound
 from deken_api.security.rbac import Permission
-from deken_api.services.media import MediaService, orientation_of, usable_for_production
+from deken_api.services.media import (
+    MediaService,
+    dynamic_range_of,
+    orientation_of,
+    usable_for_production,
+)
 
 router = APIRouter(prefix="/media", tags=["media"])
 
@@ -54,6 +59,7 @@ def asset_out(
         width=asset.width,
         height=asset.height,
         orientation=orientation_of(asset.width, asset.height),
+        dynamic_range=dynamic_range_of(asset),  # type: ignore[arg-type]
         rotation=asset.rotation,
         fps=asset.fps,
         video_codec=asset.video_codec,

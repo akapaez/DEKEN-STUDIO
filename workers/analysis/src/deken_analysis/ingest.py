@@ -51,6 +51,8 @@ def media_ingest(ctx: JobContext) -> HandlerResult:
         ) from exc
     if not summary.video_streams:
         raise JobError(ErrorCode.INVALID_MEDIA, "El fichero no contiene vídeo")
+    dynamic_range = summary.video_streams[0].dynamic_range or "sdr"
+    hdr = dynamic_range != "sdr"
     try:
         warnings = decode_sample(
             settings.ffmpeg_path,
@@ -70,7 +72,11 @@ def media_ingest(ctx: JobContext) -> HandlerResult:
     run_ffmpeg(
         settings.ffmpeg_path,
         poster_args(
-            source, "poster.jpg", at_s=min(1.0, duration * 0.1), max_px=payload.poster_max_px
+            source,
+            "poster.jpg",
+            at_s=min(1.0, duration * 0.1),
+            max_px=payload.poster_max_px,
+            hdr=hdr,
         ),
         cwd=ctx.work_dir,
         timeout_s=min(300.0, ctx.remaining_s),
@@ -84,13 +90,18 @@ def media_ingest(ctx: JobContext) -> HandlerResult:
             frames=payload.strip_frames,
             duration_s=duration,
             height=payload.strip_height,
+            hdr=hdr,
         ),
         cwd=ctx.work_dir,
         timeout_s=min(1800.0, ctx.remaining_s),
         cancel=ctx.cancel_event,
     )
 
-    ctx.report(0.3, "Creando proxy de previsualización (540p)")
+    ctx.report(
+        0.3,
+        "Creando proxy de previsualización (540p"
+        + (f", HDR {dynamic_range.upper()} → SDR BT.709)" if hdr else ")"),
+    )
     proxy = payload.proxy
     run_ffmpeg(
         settings.ffmpeg_path,
@@ -101,6 +112,7 @@ def media_ingest(ctx: JobContext) -> HandlerResult:
             height=proxy.height,
             fps=proxy.fps,
             has_audio=proxy.has_audio,
+            hdr=hdr,
         ),
         cwd=ctx.work_dir,
         timeout_s=ctx.remaining_s,
@@ -156,6 +168,8 @@ def media_ingest(ctx: JobContext) -> HandlerResult:
             "decode_sample_s": payload.decode_sample_s,
             "decode_warnings": len([line for line in warnings.splitlines() if line.strip()]),
             "waveform_points": waveform_points,
+            "dynamic_range": dynamic_range,
+            "tone_mapped": hdr,
             "proxy": proxy.model_dump(mode="json"),
             "elapsed_s": round(time.monotonic() - started, 2),
         },

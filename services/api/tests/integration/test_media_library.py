@@ -11,6 +11,7 @@ import hashlib
 import json
 import os
 import subprocess
+import time
 from pathlib import Path
 from typing import Any
 
@@ -174,9 +175,17 @@ async def test_mov_without_audio_and_rotated_mov(
 async def test_large_multipart_upload(
     admin_client: ApiClient, ingest_worker: Worker, tmp_path: Path
 ) -> None:
-    """S1-01: fichero > 100 MB en varias partes de 16 MB."""
+    """S1-01: fichero > 100 MB en varias partes de 16 MB.
+
+    `DEKEN_LARGE_SECONDS` permite medir con ficheros mayores (480 s ≈ 2 GB)."""
+    seconds = float(os.environ.get("DEKEN_LARGE_SECONDS", "26"))
     big = synthetic_video(
-        tmp_path / "grande.mp4", width=1920, height=1080, seconds=26, audio=False, lossless=True
+        tmp_path / "grande.mp4",
+        width=1920,
+        height=1080,
+        seconds=seconds,
+        audio=False,
+        lossless=True,
     )
     size = big.stat().st_size
     assert size > 100 * 1024 * 1024
@@ -186,13 +195,20 @@ async def test_large_multipart_upload(
     assert start.json()["part_count"] >= 7
     await admin_client.post(f"/api/v1/media/uploads/{start.json()['asset_id']}/abort")
 
+    started = time.monotonic()
     completed = await upload_media(admin_client, big)
+    uploaded = time.monotonic()
     assert completed.status_code == 200, completed.text
     assert completed.json()["status"] == "processing"
     assert await ingest(ingest_worker)
+    ingested = time.monotonic()
     ready = await asset(admin_client, completed.json()["id"])
     assert ready["status"] == "ready", ready["status_reason"]
     assert ready["sha256"] == sha256(big)
+    print(
+        f"\n[medida] {size / 2**20:.0f} MiB, {seconds:.0f} s de vídeo: subida "
+        f"{uploaded - started:.1f} s, ingesta {ingested - uploaded:.1f} s"
+    )
 
 
 # --- S1-02: validación del contenido --------------------------------------------------------------
@@ -370,3 +386,31 @@ async def test_viewer_cannot_upload(client_factory: ClientFactory, make_user: Us
     )
     assert response.status_code == 403
     assert (await client.get("/api/v1/media/assets")).status_code == 200
+
+
+async def test_iphone_hdr_mov_gets_sdr_previews(
+    admin_client: ApiClient, ingest_worker: Worker, tmp_path: Path
+) -> None:
+    """MOV HEVC 10 bits HLG con rotación (como un iPhone): vistas previas en SDR BT.709."""
+    source = synthetic_video(
+        tmp_path / "IMG_0001.MOV", width=1280, height=720, seconds=2, rotation=90,
+        pattern="smptebars", hdr_hlg=True,
+    )  # fmt: skip
+    before = sha256(source)
+    uploaded = (await upload_media(admin_client, source)).json()
+    assert uploaded["dynamic_range"] == "hlg"
+    assert (uploaded["width"], uploaded["height"]) == (720, 1280)
+    assert await ingest(ingest_worker)
+    ready = await asset(admin_client, uploaded["id"])
+    assert ready["status"] == "ready", ready["status_reason"]
+    assert ready["sha256"] == before  # el original HDR no se toca
+
+    proxy = ffprobe(await download(ready["proxy_url"], tmp_path / "proxy.mp4"))
+    video = next(s for s in proxy["streams"] if s["codec_type"] == "video")
+    assert (video["codec_name"], video["pix_fmt"], video["width"], video["height"]) == (
+        "h264", "yuv420p", 540, 960,
+    )  # fmt: skip
+    assert (video.get("color_transfer"), video.get("color_primaries")) == ("bt709", "bt709")
+    job = (await admin_client.get(f"/api/v1/jobs/{ready['ingest_job_id']}")).json()
+    assert job["job"]["result"]["dynamic_range"] == "hlg"
+    assert job["job"]["result"]["tone_mapped"] is True

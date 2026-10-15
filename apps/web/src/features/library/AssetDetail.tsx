@@ -279,6 +279,14 @@ function TechnicalCard({ asset }: { asset: MediaAssetDetail }) {
               : "—",
           ],
           ["Rotación (móvil)", asset.rotation ? `${asset.rotation}°` : "ninguna"],
+          [
+            "Rango dinámico",
+            asset.dynamic_range && asset.dynamic_range !== "sdr"
+              ? `HDR ${asset.dynamic_range.toUpperCase()} · vistas previas convertidas a SDR (BT.709)`
+              : asset.dynamic_range === "sdr"
+                ? "SDR"
+                : "—",
+          ],
           ["Cadencia", formatFps(asset.fps)],
           ["Vídeo", asset.video_codec ?? "—"],
           ["Audio", asset.has_audio ? (asset.audio_codec ?? "sí") : "sin audio"],

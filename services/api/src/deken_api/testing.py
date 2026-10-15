@@ -139,19 +139,35 @@ def synthetic_video(
     lossless: bool = False,
     rotation: int | None = None,
     fps: int = 30,
+    pattern: str = "testsrc2",
+    hdr_hlg: bool = False,
 ) -> Path:
-    """Genera un vídeo de prueba real (barras + tono) con FFmpeg."""
+    """Genera un vídeo de prueba real (barras + tono) con FFmpeg.
+
+    `hdr_hlg`: las mismas barras codificadas como HLG BT.2020 en HEVC 10 bits (como un
+    iPhone reciente), para comprobar el mapeo de tono frente a la versión SDR."""
     import subprocess
 
-    target = path if rotation is None else path.with_suffix(".tmp.mp4")
+    target = path if rotation is None else path.with_suffix(".tmp" + path.suffix)
     cmd = [
         "ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
-        "-f", "lavfi", "-i", f"testsrc2=size={width}x{height}:rate={fps}:duration={seconds}",
+        "-f", "lavfi", "-i", f"{pattern}=size={width}x{height}:rate={fps}:duration={seconds}",
     ]  # fmt: skip
     if audio:
         cmd += ["-f", "lavfi", "-i", f"sine=frequency=440:sample_rate=48000:duration={seconds}"]
-    cmd += ["-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p"]
-    cmd += ["-qp", "0"] if lossless else ["-crf", "30"]
+    if hdr_hlg:
+        cmd += [
+            "-vf",
+            "format=gbrpf32le,zscale=tin=bt709:t=arib-std-b67:pin=bt709:p=bt2020:min=bt709:"
+            "m=bt2020nc:r=tv,format=yuv420p10le",
+            "-c:v", "libx265", "-preset", "ultrafast", "-x265-params", "log-level=error",
+            "-tag:v", "hvc1", "-color_primaries", "bt2020", "-color_trc", "arib-std-b67",
+            "-colorspace", "bt2020nc",
+        ]  # fmt: skip
+    else:
+        cmd += ["-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p"]
+    if not hdr_hlg:
+        cmd += ["-qp", "0"] if lossless else ["-crf", "30"]
     cmd += ["-c:a", "aac", "-shortest"] if audio else ["-an"]
     cmd += ["-metadata", f"comment={SYNTHETIC_LABEL}", str(target)]
     subprocess.run(cmd, check=True, timeout=300)

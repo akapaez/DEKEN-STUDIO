@@ -340,3 +340,43 @@ async def test_render_cancellation_stops_remotion(
     assert detail["job"]["status"] == "cancelled"
     assert detail["outputs"] == []
     assert list((tmp_path / "work").iterdir()) == []
+
+
+async def test_hdr_source_is_tone_mapped_before_composing(
+    admin_client: ApiClient, worker: Worker, tmp_path: Path
+) -> None:
+    """Mismo vídeo en SDR y en HLG (iPhone): el render del HDR debe parecerse al del SDR.
+    Sin la copia SDR previa, el mapeo de Remotion deja el HDR apagado (~19 dB). El clip
+    empieza en el segundo 1 de un vídeo en movimiento: si la copia del tramo usado se
+    desplazara mal, los fotogramas no coincidirían."""
+
+    async def render(source: Path) -> tuple[Path, dict[str, Any]]:
+        uploaded = (await upload_media(admin_client, source)).json()
+        assert await run_once(worker) is True  # ingesta
+        timeline = text_only_timeline(seconds=1)
+        timeline["tracks"] = [
+            {"id": "v", "kind": "video", "clips": [
+                {"id": "c", "asset_id": uploaded["id"], "source_in_s": 1, "source_out_s": 2,
+                 "at_frame": 0},
+            ]}
+        ]  # fmt: skip
+        job = (
+            await admin_client.post("/api/v1/renders/timeline", json={"timeline": timeline})
+        ).json()
+        assert await run_once(worker) is True
+        detail = await job_detail(admin_client, job["id"])
+        assert detail["job"]["status"] == "completed", detail["job"]["error"]
+        out = await download_output(admin_client, detail, tmp_path / f"{source.stem}-render.mp4")
+        return out, detail["job"]["result"]
+
+    common = {"width": 1080, "height": 1920, "seconds": 3, "audio": False, "pattern": "testsrc2"}
+    sdr, sdr_result = await render(synthetic_video(tmp_path / "sdr.mp4", **common))
+    hdr, hdr_result = await render(synthetic_video(tmp_path / "hlg.mov", hdr_hlg=True, **common))
+    assert (sdr_result["hdr_inputs_tone_mapped"], hdr_result["hdr_inputs_tone_mapped"]) == (0, 1)
+    out = subprocess.run(
+        ["ffmpeg", "-hide_banner", "-ss", "0.5", "-i", str(sdr), "-ss", "0.5", "-i", str(hdr),
+         "-filter_complex", "[0:v][1:v]psnr", "-frames:v", "3", "-f", "null", "-"],
+        capture_output=True, text=True, check=True, timeout=120,
+    )  # fmt: skip
+    assert float(out.stderr.rsplit("average:", 1)[1].split()[0]) > 24
+    assert list((tmp_path / "work").iterdir()) == []

@@ -20,9 +20,11 @@ from typing import Any, Literal
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from deken_render.source_windows import shift_sources, used_windows
 from deken_shared.jobs import ErrorCode, RemotionEvalPayload, RenderTimelinePayload
 from deken_shared.media import VideoSpec, check_video_spec
-from deken_worker.process import probe_file, run_json_lines, verify_decodes
+from deken_worker.color import sdr_mezzanine_args
+from deken_worker.process import probe_file, run_ffmpeg, run_json_lines, verify_decodes
 from deken_worker.runtime import HandlerResult, JobContext, JobError
 
 RENDERER_DIR = Path(__file__).resolve().parents[2] / "remotion"
@@ -264,29 +266,75 @@ def remotion_eval(ctx: JobContext) -> HandlerResult:
     )
 
 
+def _sdr_copy(
+    ctx: JobContext,
+    path: Path,
+    *,
+    has_audio: bool,
+    progress: float,
+    window: tuple[float, float] | None,
+) -> Path | None:
+    """Si el original es HDR (HLG/PQ), crea una copia SDR BT.709 del tramo usado.
+
+    El mapeo de tono propio de Remotion deja el HDR apagado; se usa el mismo que en los
+    proxys de la biblioteca. El original descargado no se modifica."""
+    probe = probe_file(ctx.settings.ffprobe_path, path, timeout_s=min(120.0, ctx.remaining_s))
+    video = probe.video_streams[0] if probe.video_streams else None
+    dynamic_range = video.dynamic_range if video else None
+    if dynamic_range is None or dynamic_range == "sdr":
+        return None
+    out = f"{path.stem}.sdr.mov"
+    ctx.report(progress, f"Convirtiendo HDR {dynamic_range.upper()} a SDR BT.709")
+    start, end = window or (0.0, probe.duration_s or 0.0)
+    run_ffmpeg(
+        ctx.settings.ffmpeg_path,
+        sdr_mezzanine_args(
+            path, out, has_audio=has_audio, start_s=start, length_s=(end - start) or None
+        ),
+        cwd=ctx.work_dir,
+        timeout_s=ctx.remaining_s,
+        cancel=ctx.cancel_event,
+        duration_s=(end - start) or probe.duration_s,
+    )
+    return ctx.path(out)
+
+
 def render_timeline(ctx: JobContext) -> HandlerResult:
     payload = RenderTimelinePayload.model_validate(ctx.job.payload)
     inputs: list[dict[str, Any]] = []
+    windows = used_windows(payload.timeline)
+    offsets: dict[str, float] = {}
     for i, item in enumerate(ctx.job.inputs):
-        ctx.report(0.01 + 0.03 * i / max(1, len(ctx.job.inputs)), f"Descargando {item.name}")
+        progress = 0.01 + 0.03 * i / max(1, len(ctx.job.inputs))
+        ctx.report(progress, f"Descargando {item.name}")
         path = ctx.download_input(item)
-        inputs.append(
-            {
-                "key": item.key,
-                "file": path.name,
-                "kind": item.kind,
-                **{
-                    k: v
-                    for k in ("width", "height", "duration_s", "has_audio")
-                    if (v := getattr(item, k)) is not None
-                },
-            }
-        )
-    return _render(
+        entry: dict[str, Any] = {
+            k: v
+            for k in ("width", "height", "duration_s", "has_audio")
+            if (v := getattr(item, k)) is not None
+        }
+        asset_id = (item.key or "").removeprefix("asset:")
+        window = windows.get(asset_id)
+        if item.kind == "video":
+            sdr = _sdr_copy(
+                ctx, path, has_audio=bool(item.has_audio), progress=progress, window=window
+            )
+            if sdr is not None:
+                path = sdr
+                if window is not None:
+                    # La copia empieza en el inicio del tramo: recortes relativos a él.
+                    offsets[asset_id] = window[0]
+                    entry["duration_s"] = round(window[1] - window[0], 3)
+        inputs.append({"key": item.key, "file": path.name, "kind": item.kind, **entry})
+    result = _render(
         ctx,
         composition="DekenTimeline",
-        props={"timeline": payload.timeline},
+        props={"timeline": shift_sources(payload.timeline, offsets)},
         purpose=payload.purpose,
         spec=payload.video_spec(),
         inputs=inputs,
     )
+    result.result["hdr_inputs_tone_mapped"] = sum(
+        1 for i in inputs if str(i["file"]).endswith(".sdr.mov")
+    )
+    return result

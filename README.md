@@ -29,6 +29,7 @@ evaluación. Las demás secciones aparecen deshabilitadas con el sprint en que l
 | [docs/SECURITY.md](docs/SECURITY.md) | Controles, roles, secretos, RGPD |
 | [docs/deployment/](docs/deployment) | Desarrollo local, worker en WSL2, servidor |
 | [docs/operations/BACKUP_RESTORE.md](docs/operations/BACKUP_RESTORE.md) | Copias y restauración |
+| [docs/operations/ACEPTACION_MATERIAL_REAL.md](docs/operations/ACEPTACION_MATERIAL_REAL.md) | Prueba de aceptación de Sprint 1 con material real de DEKEN |
 | [docs/adr/](docs/adr) | Decisiones de arquitectura |
 
 ## Puesta en marcha rápida

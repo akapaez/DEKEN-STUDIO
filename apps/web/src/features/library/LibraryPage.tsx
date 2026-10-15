@@ -36,6 +36,11 @@ function AssetCard({ asset }: { asset: MediaAsset }) {
             <span className="mono">{formatClock(asset.duration_s)}</span>
             {asset.orientation ? <span>{ORIENTATION[asset.orientation]}</span> : null}
             {asset.width && asset.height ? <span className="mono">{`${asset.width}×${asset.height}`}</span> : null}
+            {asset.dynamic_range && asset.dynamic_range !== "sdr" ? (
+              <span className="mono" title={`HDR ${asset.dynamic_range.toUpperCase()}`}>
+                HDR
+              </span>
+            ) : null}
             {asset.has_audio === false ? (
               <VolumeX size={14} aria-label="Sin audio" />
             ) : asset.has_audio ? (

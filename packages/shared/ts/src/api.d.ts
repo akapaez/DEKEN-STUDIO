@@ -1328,6 +1328,11 @@ export interface components {
             duplicate_of_id: string | null;
             /** Duration S */
             duration_s: number | null;
+            /**
+             * Dynamic Range
+             * @description HDR de origen (hlg/pq): póster, tira y proxy se convierten a SDR BT.709
+             */
+            dynamic_range?: ("sdr" | "hlg" | "pq") | null;
             /** Fps */
             fps: number | null;
             /** Has Audio */
@@ -1425,6 +1430,11 @@ export interface components {
             duplicate_of_id: string | null;
             /** Duration S */
             duration_s: number | null;
+            /**
+             * Dynamic Range
+             * @description HDR de origen (hlg/pq): póster, tira y proxy se convierten a SDR BT.709
+             */
+            dynamic_range?: ("sdr" | "hlg" | "pq") | null;
             /** Fps */
             fps: number | null;
             /** Has Audio */

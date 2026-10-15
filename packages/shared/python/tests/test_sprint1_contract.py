@@ -132,6 +132,21 @@ def test_ingest_payload_proxy_spec_tolerances() -> None:
         MediaIngestPayload(asset_id=uuid.uuid4(), inputs=[], proxy=payload.proxy)
 
 
+@pytest.mark.parametrize("seconds", [100.0, 480.0, 2 * 3600.0, 6 * 3600.0])
+def test_proxy_spec_for_long_recordings(seconds: float) -> None:
+    """Regresión: con > 100 s el margen del 1 % superaba los topes de VideoSpec."""
+    payload = MediaIngestPayload(
+        asset_id=uuid.uuid4(),
+        inputs=[
+            {"name": "original", "object_id": uuid.uuid4(), "kind": "video", "extension": "mov"}
+        ],
+        proxy=ProxyTarget(width=960, height=540, fps=29.97, duration_s=seconds, has_audio=True),
+    )
+    spec = payload.proxy_spec()
+    assert spec.frame_tolerance == max(2, round(seconds * 29.97 * 0.01))
+    assert spec.container_tolerance_s == pytest.approx(max(0.25, seconds * 0.01))
+
+
 def test_storage_kind_depends_on_purpose() -> None:
     timeline_spec = get_job_type_spec(JobType.RENDER_TIMELINE.value)
     timeline = {"output": {"width": 1920, "height": 1080, "fps": 25, "duration_frames": 250}}

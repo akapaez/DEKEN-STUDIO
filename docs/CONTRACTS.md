@@ -66,7 +66,7 @@
 | `POST /media/uploads/{id}/abort` | `media:write` | Aborta la subida en el almacenamiento → `cancelled` |
 | `GET /media/assets` | `media:read` | Galería: `q`, `tag` (varias), `status`, `orientation`, `has_audio`, `consent`, `include_archived`, `limit`/`offset`; URLs firmadas de póster y tira |
 | `GET /media/tags` | `media:read` | Etiquetas con recuento |
-| `GET /media/assets/{id}` | `media:read` | Ficha: metadatos, derivados verificados, URL del proxy |
+| `GET /media/assets/{id}` | `media:read` | Ficha: metadatos (incluido `dynamic_range`: `sdr`/`hlg`/`pq`), derivados verificados, URL del proxy |
 | `GET /media/assets/{id}/waveform` | `media:read` | Picos de audio (`{version, duration_s, peaks}`) |
 | `GET /media/assets/{id}/original-url` | `media:read` | URL firmada del original (auditada) |
 | `PATCH /media/assets/{id}` | `media:write` | Título, descripción, etiquetas, fecha y lugar |
@@ -146,9 +146,9 @@ Reglas:
 | Tipo | Cola | Payload | Salidas | Sprint |
 |---|---|---|---|---|
 | `system.render_selftest` | render | `duration_s` (1–30), `width`, `height`, `fps`, `label` | `video` (`video/mp4`, verificado) | 0 |
-| `media.ingest` | analysis | `asset_id`, `inputs` (original), `proxy` (tamaño, fps, duración, audio), parámetros de póster/tira/forma de onda | `poster`, `strip` (JPEG), `proxy` (MP4 verificado), `waveform` (JSON, opcional); `result.sha256` del original | 1 |
+| `media.ingest` | analysis | `asset_id`, `inputs` (original), `proxy` (tamaño, fps, duración, audio), parámetros de póster/tira/forma de onda | `poster`, `strip` (JPEG), `proxy` (MP4 BT.709 verificado), `waveform` (JSON, opcional); `result.sha256` del original, `result.dynamic_range` (`sdr`/`hlg`/`pq`) y `result.tone_mapped` | 1 |
 | `system.remotion_eval` | render | `title`, `subtitle`, `label` | `video` (1080×1920, 30 fps, 150 fotogramas exactos) en `evaluation/` | 1 |
-| `render.timeline` | render | `timeline` (`deken.timeline/1`), `purpose` (`evaluation`/`production`), `inputs` resueltos, `title` | `video` según `timeline.output`, fotogramas exactos; `evaluation/` o `renders/` | 1 (motor) / 3 (proyectos) |
+| `render.timeline` | render | `timeline` (`deken.timeline/1`), `purpose` (`evaluation`/`production`), `inputs` resueltos, `title` | `video` según `timeline.output`, fotogramas exactos; `evaluation/` o `renders/`; `result.hdr_inputs_tone_mapped` (originales HDR convertidos a SDR antes de componer) | 1 (motor) / 3 (proyectos) |
 | `media.segments` | analysis | `asset_id`, detectores | `segments` (JSON), `transcript` (VTT) | 3 |
 
 Códigos de error de handlers añadidos en Sprint 1: `invalid_media` (no reintentable:

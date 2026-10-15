@@ -3839,6 +3839,23 @@
             "type": "string",
             "title": "Title"
           },
+          "dynamic_range": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "sdr",
+                  "hlg",
+                  "pq"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dynamic Range",
+            "description": "HDR de origen (hlg/pq): póster, tira y proxy se convierten a SDR BT.709"
+          },
           "description": {
             "anyOf": [
               {
@@ -4268,6 +4285,23 @@
           "title": {
             "type": "string",
             "title": "Title"
+          },
+          "dynamic_range": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "sdr",
+                  "hlg",
+                  "pq"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dynamic Range",
+            "description": "HDR de origen (hlg/pq): póster, tira y proxy se convierten a SDR BT.709"
           },
           "description": {
             "anyOf": [

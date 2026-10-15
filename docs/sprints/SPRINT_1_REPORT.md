@@ -142,3 +142,23 @@ Incidencias detectadas y corregidas por las propias pruebas:
 3. Criterio y referencias de consentimiento de las personas que aparecen.
 4. Clave del proveedor de IA (opcional; sin ella, modo manual) y fuentes verificadas
    para la base de conocimiento (Sprint 2).
+
+## 6. Endurecimiento posterior (preparación para material real)
+
+Antes de la aceptación con material de DEKEN se probaron con equivalentes sintéticos los
+casos reales de más riesgo. Hallazgos y correcciones:
+
+| Caso | Hallazgo | Corrección y evidencia |
+|---|---|---|
+| Vídeo HDR de iPhone (HEVC 10 bits, HLG BT.2020, rotado) | El proxy salía lavado y sin saturación (PSNR 18 dB frente a la versión SDR de las mismas barras) y conservaba etiquetas BT.2020/HLG siendo de 8 bits | Mapeo de tono *mobius* a SDR BT.709 en póster, tira y proxy (27 dB); proxy etiquetado BT.709; la ficha muestra el rango dinámico. `test_hdr_proxy_is_tone_mapped_to_sdr`, `test_iphone_hdr_mov_gets_sdr_previews` |
+| Render con Remotion de un original HDR | El mapeo de tono propio de Remotion también lo dejaba apagado (18,8 dB) | El worker crea una copia SDR del **tramo usado** antes de componer (27,6 dB) y desplaza los recortes; la línea de tiempo guardada no cambia. `test_hdr_source_is_tone_mapped_before_composing` (vídeo en movimiento desde el segundo 1, compara render HDR y SDR) y `test_source_windows.py` |
+| Vídeos de más de 100 s | **Ninguno se podía ingerir**: el margen del 1 % superaba los topes del modelo `VideoSpec` (30 fotogramas, 5 s, 1 h) | Topes ampliados (duración máxima 6 h, rechazada con mensaje claro en la subida). Regresión cubierta para 100 s, 8 min, 2 h y 6 h |
+| Mapeo de tono en 4K | 2,35 × la duración si se aplica antes de escalar | En el proxy se aplica tras escalar (0,57 ×, visualmente idéntico: 34 dB entre ambos); póster y tira lo aplican antes (zscale no admite anchos impares en 4:2:0) |
+
+Medidas (4 vCPU): subida de 1,9 GB en 21 s y su ingesta (8 min de 1080p) en 104 s; render
+Remotion de 60 s 1080×1920 con vídeo, textos y subtítulos en 295 s (1.800 fotogramas
+exactos); la concurrencia de Remotion apenas mejora con 4 vCPU (−7 %).
+
+La prueba de aceptación con material real queda descrita paso a paso en
+[`docs/operations/ACEPTACION_MATERIAL_REAL.md`](../operations/ACEPTACION_MATERIAL_REAL.md).
+

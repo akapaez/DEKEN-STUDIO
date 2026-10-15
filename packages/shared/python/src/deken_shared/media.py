@@ -13,6 +13,10 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 SQUARE_PIXELS = {"1:1"}
+MAX_VIDEO_SECONDS = 6 * 3600
+"""Duración máxima de un vídeo (biblioteca y renders). La ingesta tiene 6 h de límite."""
+DynamicRange = Literal["sdr", "hlg", "pq"]
+HDR_TRANSFERS: dict[str, DynamicRange] = {"arib-std-b67": "hlg", "smpte2084": "pq"}
 """Relaciones de aspecto de píxel aceptadas: la salida nunca se deforma."""
 
 
@@ -29,14 +33,15 @@ class VideoSpec(BaseModel):
     pix_fmt: Literal["yuv420p"] = "yuv420p"
     audio_codec: Literal["aac"] | None = "aac"
     audio_sample_rate: int | None = Field(default=48000, ge=8000, le=192000)
-    duration_s: float = Field(gt=0, le=3600)
+    duration_s: float = Field(gt=0, le=MAX_VIDEO_SECONDS)
+    # Proporcionales a la duración en los proxys (1 %): vídeos de horas necesitan margen.
     frame_tolerance: int = Field(
-        default=1, ge=0, le=30, description="Diferencia máxima de fotogramas de vídeo"
+        default=1, ge=0, le=100_000, description="Diferencia máxima de fotogramas de vídeo"
     )
     container_tolerance_s: float = Field(
         default=0.1,
         ge=0,
-        le=5,
+        le=600,
         description="Margen para la duración del contenedor (bloques AAC, edit lists)",
     )
 
@@ -76,6 +81,16 @@ class StreamSummary(BaseModel):
     bit_rate: int | None = None
     rotation: int | None = None
     """Rotación de visualización en grados (metadato del móvil): 0, 90, 180 o 270."""
+    color_transfer: str | None = None
+    color_primaries: str | None = None
+    color_space: str | None = None
+
+    @property
+    def dynamic_range(self) -> DynamicRange | None:
+        """`hlg` / `pq` si el vídeo es HDR (típico de móviles recientes); `sdr` si no."""
+        if self.codec_type != "video":
+            return None
+        return HDR_TRANSFERS.get(self.color_transfer or "", "sdr")
 
     @property
     def display_size(self) -> tuple[int, int] | None:
@@ -177,6 +192,11 @@ def _str(value: object) -> str | None:
     return value if isinstance(value, str) and value else None
 
 
+def _color(value: object) -> str | None:
+    text = _str(value)
+    return None if text in (None, "unknown", "reserved") else text
+
+
 def parse_ffprobe_json(data: dict[str, Any]) -> ProbeSummary:
     """Convierte la salida de `ffprobe -show_format -show_streams -of json`."""
     fmt = data.get("format")
@@ -206,6 +226,9 @@ def parse_ffprobe_json(data: dict[str, Any]) -> ProbeSummary:
                 channels=_int(raw.get("channels")),
                 bit_rate=_int(raw.get("bit_rate")),
                 rotation=_rotation(raw),
+                color_transfer=_color(raw.get("color_transfer")),
+                color_primaries=_color(raw.get("color_primaries")),
+                color_space=_color(raw.get("color_space")),
             )
         )
     return ProbeSummary(

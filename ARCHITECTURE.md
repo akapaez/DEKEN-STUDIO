@@ -277,6 +277,12 @@ cadencia ajustada al estándar más próximo, `setsar=1`), forma de onda (picos 
 en 1000 tramos) y comprobación final de que el original no ha cambiado. FFmpeg aplica la
 rotación del móvil; el tamaño de visualización tiene en cuenta rotación y SAR.
 
+**HDR de móvil (HLG/PQ)**: se detecta en el probe (`dynamic_range`). Póster, tira y proxy
+se convierten a SDR BT.709 con mapeo de tono *mobius* (sin él salen lavados: 18 dB frente
+a 27 dB respecto a la referencia SDR). En el render, el worker crea antes de componer una
+copia SDR **solo del tramo usado** de cada original HDR y desplaza los recortes que recibe
+la composición; el mapeo propio de Remotion deja el HDR apagado. El original no se toca.
+
 **Composición (Remotion)**:
 
 - `packages/video-compositions` define la **línea de tiempo `deken.timeline/1`** (zod):

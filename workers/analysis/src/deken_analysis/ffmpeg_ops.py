@@ -3,6 +3,10 @@
 FFmpeg aplica la rotación del móvil al decodificar (autorotate), por eso los filtros
 trabajan con las dimensiones de visualización. Nunca se deforma: escalado proporcional
 y `setsar=1` (píxel cuadrado).
+
+Vídeo HDR (HLG o PQ, típico de móviles recientes): los derivados se convierten a SDR
+BT.709 con mapeo de tono *mobius*, que conserva casi intactos los colores dentro de rango
+y comprime solo las altas luces. Sin esto el proxy sale lavado y sin saturación.
 """
 
 from __future__ import annotations
@@ -14,6 +18,7 @@ import time
 from collections.abc import Callable
 from pathlib import Path
 
+from deken_worker.color import BT709_TAGS, sdr_prefix
 from deken_worker.process import (
     ProcessCancelledError,
     ProcessFailedError,
@@ -25,8 +30,12 @@ from deken_worker.process import (
 PCM_RATE = 8000
 
 
-def poster_args(source: Path, out: str, *, at_s: float, max_px: int) -> list[str]:
-    scale = (
+def poster_args(
+    source: Path, out: str, *, at_s: float, max_px: int, hdr: bool = False
+) -> list[str]:
+    # Póster y tira: mapeo de tono ANTES de escalar (zscale no admite anchos impares en
+    # 4:2:0 y el tamaño proporcional exacto puede serlo; son pocos fotogramas).
+    scale = sdr_prefix(hdr) + (
         f"scale='if(gte(iw,ih),min({max_px},iw),-1)':'if(gte(iw,ih),-1,min({max_px},ih))'"
         ":flags=lanczos,setsar=1"
     )
@@ -44,16 +53,33 @@ def poster_args(source: Path, out: str, *, at_s: float, max_px: int) -> list[str
     ]
 
 
-def strip_args(source: Path, out: str, *, frames: int, duration_s: float, height: int) -> list[str]:
+def strip_args(
+    source: Path,
+    out: str,
+    *,
+    frames: int,
+    duration_s: float,
+    height: int,
+    hdr: bool = False,
+) -> list[str]:
     rate = f"{frames}/{max(duration_s, 0.1):.3f}"
-    vf = f"fps={rate},scale=-1:{height}:flags=lanczos,setsar=1,tile={frames}x1"
+    vf = f"fps={rate},{sdr_prefix(hdr)}scale=-1:{height}:flags=lanczos,setsar=1,tile={frames}x1"
     return [*file_input(source), "-an", "-vf", vf, "-frames:v", "1", "-q:v", "4", out]
 
 
 def proxy_args(
-    source: Path, out: str, *, width: int, height: int, fps: float, has_audio: bool
+    source: Path,
+    out: str,
+    *,
+    width: int,
+    height: int,
+    fps: float,
+    has_audio: bool,
+    hdr: bool = False,
 ) -> list[str]:
-    vf = f"scale={width}:{height}:flags=bicubic,setsar=1,fps={fps:g}"
+    # Proxy: mapeo de tono DESPUÉS de escalar (en 4K es ~4 veces más rápido e igual a la
+    # vista); las dimensiones del proxy son siempre pares.
+    vf = f"scale={width}:{height}:flags=bicubic,{sdr_prefix(hdr)}setsar=1,fps={fps:g}"
     audio = (
         ["-map", "0:a:0", "-c:a", "aac", "-b:a", "128k", "-ar", "48000", "-ac", "2"]
         if has_audio
@@ -64,7 +90,7 @@ def proxy_args(
         "-map", "0:v:0", *audio,
         "-vf", vf,
         "-c:v", "libx264", "-preset", "veryfast", "-crf", "26", "-profile:v", "high",
-        "-pix_fmt", "yuv420p", "-g", str(max(1, round(fps * 2))),
+        "-pix_fmt", "yuv420p", "-g", str(max(1, round(fps * 2))), *BT709_TAGS,
         "-movflags", "+faststart",
         "-metadata", "comment=DEKEN STUDIO AI - proxy de previsualización (no es el original)",
         out,

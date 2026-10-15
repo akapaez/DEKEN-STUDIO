@@ -298,6 +298,10 @@ class PartUrlOut(BaseModel):
 class MediaAssetOut(BaseModel):
     id: uuid.UUID
     title: str
+    dynamic_range: Literal["sdr", "hlg", "pq"] | None = Field(
+        default=None,
+        description="HDR de origen (hlg/pq): póster, tira y proxy se convierten a SDR BT.709",
+    )
     description: str | None
     original_filename: str
     status: MediaStatus

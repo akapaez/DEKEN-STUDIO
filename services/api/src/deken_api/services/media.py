@@ -36,7 +36,7 @@ from deken_api.services import audit
 from deken_api.services.audit import AuditContext
 from deken_api.services.jobs import JobService
 from deken_shared.jobs import InputRef, JobStatus, JobType, MediaIngestPayload, ProxyTarget
-from deken_shared.media import ProbeSummary
+from deken_shared.media import HDR_TRANSFERS, MAX_VIDEO_SECONDS, ProbeSummary
 
 log = get_logger(__name__)
 
@@ -113,6 +113,14 @@ def orientation_of(width: int | None, height: int | None) -> str | None:
     if abs(ratio - 1) < 0.05:
         return "square"
     return "horizontal" if ratio > 1 else "vertical"
+
+
+def dynamic_range_of(asset: MediaAsset) -> str | None:
+    """`sdr`, `hlg` o `pq` según la pista de vídeo del probe (HDR típico de móviles)."""
+    for stream in (asset.probe or {}).get("streams", []):
+        if stream.get("codec_type") == "video" and stream.get("codec_name") not in {"mjpeg", "png"}:
+            return HDR_TRANSFERS.get(str(stream.get("color_transfer") or ""), "sdr")
+    return None
 
 
 def usable_for_production(asset: MediaAsset) -> bool:
@@ -458,6 +466,8 @@ class MediaService:
             return "La pista de vídeo no tiene dimensiones"
         if not summary.duration_s or summary.duration_s <= 0:
             return "El vídeo no tiene duración"
+        if summary.duration_s > MAX_VIDEO_SECONDS:
+            return f"El vídeo dura más de {MAX_VIDEO_SECONDS // 3600} horas"
         return None
 
     @staticmethod
